@@ -1,0 +1,298 @@
+   1               		.file	"font4x5.c"
+   2               	__SP_H__ = 0x3e
+   3               	__SP_L__ = 0x3d
+   4               	__SREG__ = 0x3f
+   5               	__tmp_reg__ = 0
+   6               	__zero_reg__ = 1
+   7               		.text
+   8               	.Ltext0:
+   9               		.cfi_sections	.debug_frame
+  10               	.global	font4x5_info
+  11               		.section	.progmem.data,"a",@progbits
+  14               	font4x5_info:
+  15 0000 04        		.byte	4
+  16 0001 05        		.byte	5
+  17 0002 26        		.byte	38
+  18 0003 0000      		.word	font4x5_data
+  19 0005 0000      		.word	font4x5_offs
+  22               	font4x5_offs:
+  23 0007 41        		.byte	65
+  24 0008 00        		.zero	1
+  25 0009 0000      		.word	0
+  26 000b 42        		.byte	66
+  27 000c 00        		.zero	1
+  28 000d 0400      		.word	4
+  29 000f 43        		.byte	67
+  30 0010 00        		.zero	1
+  31 0011 0800      		.word	8
+  32 0013 44        		.byte	68
+  33 0014 00        		.zero	1
+  34 0015 0C00      		.word	12
+  35 0017 45        		.byte	69
+  36 0018 00        		.zero	1
+  37 0019 1000      		.word	16
+  38 001b 46        		.byte	70
+  39 001c 00        		.zero	1
+  40 001d 1400      		.word	20
+  41 001f 47        		.byte	71
+  42 0020 00        		.zero	1
+  43 0021 1800      		.word	24
+  44 0023 48        		.byte	72
+  45 0024 00        		.zero	1
+  46 0025 1C00      		.word	28
+  47 0027 49        		.byte	73
+  48 0028 00        		.zero	1
+  49 0029 2000      		.word	32
+  50 002b 4A        		.byte	74
+  51 002c 00        		.zero	1
+  52 002d 2400      		.word	36
+  53 002f 4B        		.byte	75
+  54 0030 00        		.zero	1
+  55 0031 2800      		.word	40
+  56 0033 4C        		.byte	76
+  57 0034 00        		.zero	1
+  58 0035 2C00      		.word	44
+  59 0037 4D        		.byte	77
+  60 0038 00        		.zero	1
+  61 0039 3000      		.word	48
+  62 003b 4E        		.byte	78
+  63 003c 00        		.zero	1
+  64 003d 3400      		.word	52
+  65 003f 4F        		.byte	79
+  66 0040 00        		.zero	1
+  67 0041 3800      		.word	56
+  68 0043 50        		.byte	80
+  69 0044 00        		.zero	1
+  70 0045 3C00      		.word	60
+  71 0047 51        		.byte	81
+  72 0048 00        		.zero	1
+  73 0049 4000      		.word	64
+  74 004b 52        		.byte	82
+  75 004c 00        		.zero	1
+  76 004d 4400      		.word	68
+  77 004f 53        		.byte	83
+  78 0050 00        		.zero	1
+  79 0051 4800      		.word	72
+  80 0053 54        		.byte	84
+  81 0054 00        		.zero	1
+  82 0055 4C00      		.word	76
+  83 0057 55        		.byte	85
+  84 0058 00        		.zero	1
+  85 0059 5000      		.word	80
+  86 005b 56        		.byte	86
+  87 005c 00        		.zero	1
+  88 005d 5400      		.word	84
+  89 005f 57        		.byte	87
+  90 0060 00        		.zero	1
+  91 0061 5800      		.word	88
+  92 0063 58        		.byte	88
+  93 0064 00        		.zero	1
+  94 0065 5C00      		.word	92
+  95 0067 59        		.byte	89
+  96 0068 00        		.zero	1
+  97 0069 6000      		.word	96
+  98 006b 5A        		.byte	90
+  99 006c 00        		.zero	1
+ 100 006d 6400      		.word	100
+ 101 006f 30        		.byte	48
+ 102 0070 00        		.zero	1
+ 103 0071 6800      		.word	104
+ 104 0073 31        		.byte	49
+ 105 0074 00        		.zero	1
+ 106 0075 6C00      		.word	108
+ 107 0077 32        		.byte	50
+ 108 0078 00        		.zero	1
+ 109 0079 7000      		.word	112
+ 110 007b 33        		.byte	51
+ 111 007c 00        		.zero	1
+ 112 007d 7400      		.word	116
+ 113 007f 34        		.byte	52
+ 114 0080 00        		.zero	1
+ 115 0081 7800      		.word	120
+ 116 0083 35        		.byte	53
+ 117 0084 00        		.zero	1
+ 118 0085 7C00      		.word	124
+ 119 0087 36        		.byte	54
+ 120 0088 00        		.zero	1
+ 121 0089 8000      		.word	128
+ 122 008b 37        		.byte	55
+ 123 008c 00        		.zero	1
+ 124 008d 8400      		.word	132
+ 125 008f 38        		.byte	56
+ 126 0090 00        		.zero	1
+ 127 0091 8800      		.word	136
+ 128 0093 39        		.byte	57
+ 129 0094 00        		.zero	1
+ 130 0095 8C00      		.word	140
+ 131 0097 20        		.byte	32
+ 132 0098 00        		.zero	1
+ 133 0099 9000      		.word	144
+ 134 009b FF        		.byte	-1
+ 135 009c 00        		.zero	1
+ 136 009d FFFF      		.word	-1
+ 139               	font4x5_data:
+ 140 009f 0F        		.byte	15
+ 141 00a0 14        		.byte	20
+ 142 00a1 14        		.byte	20
+ 143 00a2 0F        		.byte	15
+ 144 00a3 1F        		.byte	31
+ 145 00a4 11        		.byte	17
+ 146 00a5 15        		.byte	21
+ 147 00a6 0A        		.byte	10
+ 148 00a7 0E        		.byte	14
+ 149 00a8 11        		.byte	17
+ 150 00a9 11        		.byte	17
+ 151 00aa 00        		.byte	0
+ 152 00ab 1F        		.byte	31
+ 153 00ac 11        		.byte	17
+ 154 00ad 11        		.byte	17
+ 155 00ae 0E        		.byte	14
+ 156 00af 1F        		.byte	31
+ 157 00b0 15        		.byte	21
+ 158 00b1 15        		.byte	21
+ 159 00b2 11        		.byte	17
+ 160 00b3 1F        		.byte	31
+ 161 00b4 14        		.byte	20
+ 162 00b5 10        		.byte	16
+ 163 00b6 10        		.byte	16
+ 164 00b7 0E        		.byte	14
+ 165 00b8 11        		.byte	17
+ 166 00b9 15        		.byte	21
+ 167 00ba 16        		.byte	22
+ 168 00bb 1F        		.byte	31
+ 169 00bc 04        		.byte	4
+ 170 00bd 04        		.byte	4
+ 171 00be 1F        		.byte	31
+ 172 00bf 11        		.byte	17
+ 173 00c0 1F        		.byte	31
+ 174 00c1 11        		.byte	17
+ 175 00c2 00        		.byte	0
+ 176 00c3 02        		.byte	2
+ 177 00c4 11        		.byte	17
+ 178 00c5 11        		.byte	17
+ 179 00c6 1E        		.byte	30
+ 180 00c7 1F        		.byte	31
+ 181 00c8 04        		.byte	4
+ 182 00c9 04        		.byte	4
+ 183 00ca 1B        		.byte	27
+ 184 00cb 1F        		.byte	31
+ 185 00cc 01        		.byte	1
+ 186 00cd 01        		.byte	1
+ 187 00ce 01        		.byte	1
+ 188 00cf 1F        		.byte	31
+ 189 00d0 08        		.byte	8
+ 190 00d1 0C        		.byte	12
+ 191 00d2 1F        		.byte	31
+ 192 00d3 1F        		.byte	31
+ 193 00d4 08        		.byte	8
+ 194 00d5 04        		.byte	4
+ 195 00d6 1F        		.byte	31
+ 196 00d7 0E        		.byte	14
+ 197 00d8 11        		.byte	17
+ 198 00d9 11        		.byte	17
+ 199 00da 0E        		.byte	14
+ 200 00db 1F        		.byte	31
+ 201 00dc 14        		.byte	20
+ 202 00dd 14        		.byte	20
+ 203 00de 08        		.byte	8
+ 204 00df 0D        		.byte	13
+ 205 00e0 12        		.byte	18
+ 206 00e1 11        		.byte	17
+ 207 00e2 0E        		.byte	14
+ 208 00e3 1F        		.byte	31
+ 209 00e4 14        		.byte	20
+ 210 00e5 16        		.byte	22
+ 211 00e6 09        		.byte	9
+ 212 00e7 09        		.byte	9
+ 213 00e8 15        		.byte	21
+ 214 00e9 15        		.byte	21
+ 215 00ea 12        		.byte	18
+ 216 00eb 10        		.byte	16
+ 217 00ec 1F        		.byte	31
+ 218 00ed 10        		.byte	16
+ 219 00ee 00        		.byte	0
+ 220 00ef 1E        		.byte	30
+ 221 00f0 01        		.byte	1
+ 222 00f1 01        		.byte	1
+ 223 00f2 1E        		.byte	30
+ 224 00f3 1C        		.byte	28
+ 225 00f4 02        		.byte	2
+ 226 00f5 01        		.byte	1
+ 227 00f6 1E        		.byte	30
+ 228 00f7 1E        		.byte	30
+ 229 00f8 01        		.byte	1
+ 230 00f9 03        		.byte	3
+ 231 00fa 1E        		.byte	30
+ 232 00fb 1B        		.byte	27
+ 233 00fc 04        		.byte	4
+ 234 00fd 04        		.byte	4
+ 235 00fe 1B        		.byte	27
+ 236 00ff 19        		.byte	25
+ 237 0100 06        		.byte	6
+ 238 0101 04        		.byte	4
+ 239 0102 18        		.byte	24
+ 240 0103 11        		.byte	17
+ 241 0104 13        		.byte	19
+ 242 0105 15        		.byte	21
+ 243 0106 19        		.byte	25
+ 244 0107 0E        		.byte	14
+ 245 0108 11        		.byte	17
+ 246 0109 11        		.byte	17
+ 247 010a 0E        		.byte	14
+ 248 010b 00        		.byte	0
+ 249 010c 08        		.byte	8
+ 250 010d 1F        		.byte	31
+ 251 010e 00        		.byte	0
+ 252 010f 09        		.byte	9
+ 253 0110 13        		.byte	19
+ 254 0111 15        		.byte	21
+ 255 0112 09        		.byte	9
+ 256 0113 00        		.byte	0
+ 257 0114 11        		.byte	17
+ 258 0115 15        		.byte	21
+ 259 0116 0E        		.byte	14
+ 260 0117 1C        		.byte	28
+ 261 0118 04        		.byte	4
+ 262 0119 0F        		.byte	15
+ 263 011a 04        		.byte	4
+ 264 011b 1D        		.byte	29
+ 265 011c 15        		.byte	21
+ 266 011d 15        		.byte	21
+ 267 011e 12        		.byte	18
+ 268 011f 0E        		.byte	14
+ 269 0120 15        		.byte	21
+ 270 0121 15        		.byte	21
+ 271 0122 12        		.byte	18
+ 272 0123 10        		.byte	16
+ 273 0124 10        		.byte	16
+ 274 0125 13        		.byte	19
+ 275 0126 1C        		.byte	28
+ 276 0127 0A        		.byte	10
+ 277 0128 15        		.byte	21
+ 278 0129 15        		.byte	21
+ 279 012a 0A        		.byte	10
+ 280 012b 08        		.byte	8
+ 281 012c 15        		.byte	21
+ 282 012d 15        		.byte	21
+ 283 012e 0E        		.byte	14
+ 284 012f 12        		.byte	18
+ 285 0130 15        		.byte	21
+ 286 0131 15        		.byte	21
+ 287 0132 1E        		.byte	30
+ 288               		.text
+ 289               	.Letext0:
+ 290               		.file 1 "/usr/lib/avr/include/stdint.h"
+ 291               		.file 2 "include/fonts.h"
+ 292               		.file 3 "src/font4x5.c"
+DEFINED SYMBOLS
+                            *ABS*:0000000000000000 font4x5.c
+     /tmp/ccBgxf60.s:2      *ABS*:000000000000003e __SP_H__
+     /tmp/ccBgxf60.s:3      *ABS*:000000000000003d __SP_L__
+     /tmp/ccBgxf60.s:4      *ABS*:000000000000003f __SREG__
+     /tmp/ccBgxf60.s:5      *ABS*:0000000000000000 __tmp_reg__
+     /tmp/ccBgxf60.s:6      *ABS*:0000000000000001 __zero_reg__
+     /tmp/ccBgxf60.s:14     .progmem.data:0000000000000000 font4x5_info
+     /tmp/ccBgxf60.s:139    .progmem.data:000000000000009f font4x5_data
+     /tmp/ccBgxf60.s:22     .progmem.data:0000000000000007 font4x5_offs
+
+NO UNDEFINED SYMBOLS

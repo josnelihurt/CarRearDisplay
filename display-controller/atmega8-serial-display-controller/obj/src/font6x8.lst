@@ -1,0 +1,147 @@
+   1               		.file	"font6x8.c"
+   2               	__SP_H__ = 0x3e
+   3               	__SP_L__ = 0x3d
+   4               	__SREG__ = 0x3f
+   5               	__tmp_reg__ = 0
+   6               	__zero_reg__ = 1
+   7               		.text
+   8               	.Ltext0:
+   9               		.cfi_sections	.debug_frame
+  10               	.global	font6x8_info
+  11               		.section	.progmem.data,"a",@progbits
+  14               	font6x8_info:
+  15 0000 06        		.byte	6
+  16 0001 08        		.byte	8
+  17 0002 0D        		.byte	13
+  18 0003 0000      		.word	font6x8_data
+  19 0005 0000      		.word	font6x8_offs
+  22               	font6x8_offs:
+  23 0007 31        		.byte	49
+  24 0008 00        		.zero	1
+  25 0009 0000      		.word	0
+  26 000b 32        		.byte	50
+  27 000c 00        		.zero	1
+  28 000d 0600      		.word	6
+  29 000f 33        		.byte	51
+  30 0010 00        		.zero	1
+  31 0011 0C00      		.word	12
+  32 0013 34        		.byte	52
+  33 0014 00        		.zero	1
+  34 0015 1200      		.word	18
+  35 0017 35        		.byte	53
+  36 0018 00        		.zero	1
+  37 0019 1800      		.word	24
+  38 001b 36        		.byte	54
+  39 001c 00        		.zero	1
+  40 001d 1E00      		.word	30
+  41 001f 37        		.byte	55
+  42 0020 00        		.zero	1
+  43 0021 2400      		.word	36
+  44 0023 38        		.byte	56
+  45 0024 00        		.zero	1
+  46 0025 2A00      		.word	42
+  47 0027 39        		.byte	57
+  48 0028 00        		.zero	1
+  49 0029 3000      		.word	48
+  50 002b 30        		.byte	48
+  51 002c 00        		.zero	1
+  52 002d 3600      		.word	54
+  53 002f 64        		.byte	100
+  54 0030 00        		.zero	1
+  55 0031 3C00      		.word	60
+  56 0033 32        		.byte	50
+  57 0034 00        		.zero	1
+  58 0035 4200      		.word	66
+  59 0037 FF        		.byte	-1
+  60 0038 00        		.zero	1
+  61 0039 FFFF      		.word	-1
+  64               	font6x8_data:
+  65 003b 00        		.byte	0
+  66 003c 20        		.byte	32
+  67 003d 60        		.byte	96
+  68 003e FF        		.byte	-1
+  69 003f FF        		.byte	-1
+  70 0040 00        		.byte	0
+  71 0041 43        		.byte	67
+  72 0042 C7        		.byte	-57
+  73 0043 CF        		.byte	-49
+  74 0044 DB        		.byte	-37
+  75 0045 F3        		.byte	-13
+  76 0046 63        		.byte	99
+  77 0047 C3        		.byte	-61
+  78 0048 C3        		.byte	-61
+  79 0049 DB        		.byte	-37
+  80 004a DB        		.byte	-37
+  81 004b FF        		.byte	-1
+  82 004c 7E        		.byte	126
+  83 004d FC        		.byte	-4
+  84 004e FC        		.byte	-4
+  85 004f 0C        		.byte	12
+  86 0050 1F        		.byte	31
+  87 0051 1F        		.byte	31
+  88 0052 0C        		.byte	12
+  89 0053 F3        		.byte	-13
+  90 0054 FB        		.byte	-5
+  91 0055 DB        		.byte	-37
+  92 0056 DB        		.byte	-37
+  93 0057 DB        		.byte	-37
+  94 0058 CE        		.byte	-50
+  95 0059 7E        		.byte	126
+  96 005a FF        		.byte	-1
+  97 005b DB        		.byte	-37
+  98 005c DB        		.byte	-37
+  99 005d DF        		.byte	-33
+ 100 005e 0E        		.byte	14
+ 101 005f C0        		.byte	-64
+ 102 0060 C0        		.byte	-64
+ 103 0061 CF        		.byte	-49
+ 104 0062 DF        		.byte	-33
+ 105 0063 F0        		.byte	-16
+ 106 0064 E0        		.byte	-32
+ 107 0065 76        		.byte	118
+ 108 0066 FF        		.byte	-1
+ 109 0067 DB        		.byte	-37
+ 110 0068 DB        		.byte	-37
+ 111 0069 FF        		.byte	-1
+ 112 006a 76        		.byte	118
+ 113 006b 70        		.byte	112
+ 114 006c FB        		.byte	-5
+ 115 006d DB        		.byte	-37
+ 116 006e DB        		.byte	-37
+ 117 006f FF        		.byte	-1
+ 118 0070 7E        		.byte	126
+ 119 0071 7E        		.byte	126
+ 120 0072 FF        		.byte	-1
+ 121 0073 C3        		.byte	-61
+ 122 0074 C3        		.byte	-61
+ 123 0075 FF        		.byte	-1
+ 124 0076 7E        		.byte	126
+ 125 0077 00        		.byte	0
+ 126 0078 00        		.byte	0
+ 127 0079 00        		.byte	0
+ 128 007a 00        		.byte	0
+ 129 007b 00        		.byte	0
+ 130 007c 00        		.byte	0
+ 131 007d 00        		.byte	0
+ 132 007e 00        		.byte	0
+ 133 007f 00        		.byte	0
+ 134 0080 00        		.byte	0
+ 135 0081 00        		.byte	0
+ 136 0082 00        		.byte	0
+ 137               		.text
+ 138               	.Letext0:
+ 139               		.file 1 "/usr/lib/avr/include/stdint.h"
+ 140               		.file 2 "include/fonts.h"
+ 141               		.file 3 "src/font6x8.c"
+DEFINED SYMBOLS
+                            *ABS*:0000000000000000 font6x8.c
+     /tmp/ccGCKyM2.s:2      *ABS*:000000000000003e __SP_H__
+     /tmp/ccGCKyM2.s:3      *ABS*:000000000000003d __SP_L__
+     /tmp/ccGCKyM2.s:4      *ABS*:000000000000003f __SREG__
+     /tmp/ccGCKyM2.s:5      *ABS*:0000000000000000 __tmp_reg__
+     /tmp/ccGCKyM2.s:6      *ABS*:0000000000000001 __zero_reg__
+     /tmp/ccGCKyM2.s:14     .progmem.data:0000000000000000 font6x8_info
+     /tmp/ccGCKyM2.s:64     .progmem.data:000000000000003b font6x8_data
+     /tmp/ccGCKyM2.s:22     .progmem.data:0000000000000007 font6x8_offs
+
+NO UNDEFINED SYMBOLS

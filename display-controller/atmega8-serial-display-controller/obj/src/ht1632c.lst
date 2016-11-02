@@ -1,0 +1,853 @@
+   1               		.file	"ht1632c.c"
+   2               	__SP_H__ = 0x3e
+   3               	__SP_L__ = 0x3d
+   4               	__SREG__ = 0x3f
+   5               	__tmp_reg__ = 0
+   6               	__zero_reg__ = 1
+   7               		.text
+   8               	.Ltext0:
+   9               		.cfi_sections	.debug_frame
+  11               	ht1632c_start:
+  12               	.LFB1:
+  13               		.file 1 "src/ht1632c.c"
+   1:src/ht1632c.c **** #include "ht1632c.h"
+   2:src/ht1632c.c **** 
+   3:src/ht1632c.c **** #include <avr/io.h>
+   4:src/ht1632c.c **** #include <stdio.h>
+   5:src/ht1632c.c **** 
+   6:src/ht1632c.c **** /* set this to the port the controller is connected to */
+   7:src/ht1632c.c **** #define HT1632C_PORT		PORTB
+   8:src/ht1632c.c **** #define HT1632C_DDR		DDRB
+   9:src/ht1632c.c **** #define HT1632C_CS		_BV(3)
+  10:src/ht1632c.c **** #define HT1632C_WRCLK		_BV(4)
+  11:src/ht1632c.c **** #define HT1632C_DATA		_BV(5)
+  12:src/ht1632c.c **** 
+  13:src/ht1632c.c **** /*
+  14:src/ht1632c.c **** #define BIT_SLEEP do { asm volatile ("nop;\n\tnop;\n\tnop;\n"); } while(0)
+  15:src/ht1632c.c **** */
+  16:src/ht1632c.c **** #define BIT_SLEEP do { } while(0)
+  17:src/ht1632c.c **** 
+  18:src/ht1632c.c **** static void
+  19:src/ht1632c.c **** ht1632c_start(void)
+  20:src/ht1632c.c **** {
+  14               		.loc 1 20 0
+  15               		.cfi_startproc
+  16               	/* prologue: function */
+  17               	/* frame size = 0 */
+  18               	/* stack size = 0 */
+  19               	.L__stack_usage = 0
+  21:src/ht1632c.c **** 	BIT_SLEEP;
+  22:src/ht1632c.c **** 	HT1632C_PORT &= ~ HT1632C_CS;
+  20               		.loc 1 22 0
+  21 0000 C398      		cbi 0x18,3
+  22 0002 0895      		ret
+  23               		.cfi_endproc
+  24               	.LFE1:
+  27               	ht1632c_stop:
+  28               	.LFB2:
+  23:src/ht1632c.c **** }
+  24:src/ht1632c.c **** 
+  25:src/ht1632c.c **** static void
+  26:src/ht1632c.c **** ht1632c_stop(void)
+  27:src/ht1632c.c **** {
+  29               		.loc 1 27 0
+  30               		.cfi_startproc
+  31               	/* prologue: function */
+  32               	/* frame size = 0 */
+  33               	/* stack size = 0 */
+  34               	.L__stack_usage = 0
+  28:src/ht1632c.c **** 	BIT_SLEEP;
+  29:src/ht1632c.c **** 	HT1632C_PORT |= HT1632C_CS;
+  35               		.loc 1 29 0
+  36 0004 C39A      		sbi 0x18,3
+  37 0006 0895      		ret
+  38               		.cfi_endproc
+  39               	.LFE2:
+  42               	ht1632c_bits_mask:
+  43               	.LFB3:
+  30:src/ht1632c.c **** }
+  31:src/ht1632c.c **** 
+  32:src/ht1632c.c **** /* clock out bits to HT1632C, start with the bit
+  33:src/ht1632c.c ****  * indicated by mask (MSB). */
+  34:src/ht1632c.c **** static void
+  35:src/ht1632c.c **** ht1632c_bits_mask(uint8_t bits, uint8_t mask)
+  36:src/ht1632c.c **** {
+  44               		.loc 1 36 0
+  45               		.cfi_startproc
+  46               	.LVL0:
+  47               	/* prologue: function */
+  48               	/* frame size = 0 */
+  49               	/* stack size = 0 */
+  50               	.L__stack_usage = 0
+  51               	.L4:
+  37:src/ht1632c.c **** 	while ( mask ) {	/* 8 bits, until we have shifted out the 1 */
+  52               		.loc 1 37 0 discriminator 1
+  53 0008 6623      		tst r22
+  54 000a 01F0      		breq .L9
+  38:src/ht1632c.c **** 		HT1632C_PORT &= ~ HT1632C_WRCLK;
+  55               		.loc 1 38 0
+  56 000c C498      		cbi 0x18,4
+  39:src/ht1632c.c **** 		if ( bits & mask )
+  57               		.loc 1 39 0
+  58 000e 962F      		mov r25,r22
+  59 0010 9823      		and r25,r24
+  60 0012 01F0      		breq .L5
+  40:src/ht1632c.c **** 			HT1632C_PORT |= HT1632C_DATA;
+  61               		.loc 1 40 0
+  62 0014 C59A      		sbi 0x18,5
+  63 0016 00C0      		rjmp .L6
+  64               	.L5:
+  41:src/ht1632c.c **** 		else
+  42:src/ht1632c.c **** 			HT1632C_PORT &= ~ HT1632C_DATA;
+  65               		.loc 1 42 0
+  66 0018 C598      		cbi 0x18,5
+  67               	.L6:
+  43:src/ht1632c.c **** 
+  44:src/ht1632c.c **** 		BIT_SLEEP;
+  45:src/ht1632c.c **** 		HT1632C_PORT |= HT1632C_WRCLK;
+  68               		.loc 1 45 0
+  69 001a C49A      		sbi 0x18,4
+  46:src/ht1632c.c **** 		BIT_SLEEP;
+  47:src/ht1632c.c **** 
+  48:src/ht1632c.c **** 		mask >>= 1;
+  70               		.loc 1 48 0
+  71 001c 6695      		lsr r22
+  72               	.LVL1:
+  73 001e 00C0      		rjmp .L4
+  74               	.L9:
+  75               	/* epilogue start */
+  49:src/ht1632c.c **** 	}
+  50:src/ht1632c.c **** }
+  76               		.loc 1 50 0
+  77 0020 0895      		ret
+  78               		.cfi_endproc
+  79               	.LFE3:
+  81               	.global	ht1632c_cmd
+  83               	ht1632c_cmd:
+  84               	.LFB4:
+  51:src/ht1632c.c **** 
+  52:src/ht1632c.c **** /* gcc does not inline ht1532c_bits_mask, because it's huge. But
+  53:src/ht1632c.c ****  * the 1 << (n-1) is actually pretty complicated on
+  54:src/ht1632c.c ****  * AVR { implemented as while(i) k<<= 1 }.
+  55:src/ht1632c.c ****  */
+  56:src/ht1632c.c **** #define HT1632C_BITS(bits,n) ht1632c_bits_mask((bits),1 << ((n)-1))
+  57:src/ht1632c.c **** 
+  58:src/ht1632c.c **** /* send a 8-bit command to the LED controller */
+  59:src/ht1632c.c **** void
+  60:src/ht1632c.c **** ht1632c_cmd(uint8_t cmd)
+  61:src/ht1632c.c **** {
+  85               		.loc 1 61 0
+  86               		.cfi_startproc
+  87               	.LVL2:
+  88 0022 CF93      		push r28
+  89               	.LCFI0:
+  90               		.cfi_def_cfa_offset 3
+  91               		.cfi_offset 28, -2
+  92               	/* prologue: function */
+  93               	/* frame size = 0 */
+  94               	/* stack size = 1 */
+  95               	.L__stack_usage = 1
+  96 0024 C82F      		mov r28,r24
+  62:src/ht1632c.c **** 	ht1632c_start();
+  97               		.loc 1 62 0
+  98 0026 00D0      		rcall ht1632c_start
+  99               	.LVL3:
+  63:src/ht1632c.c **** 	HT1632C_BITS(0x04, 3);	/* 1 0 0 */
+ 100               		.loc 1 63 0
+ 101 0028 64E0      		ldi r22,lo8(4)
+ 102 002a 84E0      		ldi r24,lo8(4)
+ 103 002c 00D0      		rcall ht1632c_bits_mask
+ 104               	.LVL4:
+  64:src/ht1632c.c **** 	HT1632C_BITS(cmd,  8);	/* ... command ... */
+ 105               		.loc 1 64 0
+ 106 002e 60E8      		ldi r22,lo8(-128)
+ 107 0030 8C2F      		mov r24,r28
+ 108 0032 00D0      		rcall ht1632c_bits_mask
+ 109               	.LVL5:
+  65:src/ht1632c.c **** 	HT1632C_BITS(0,    1);	/* ... dummy? ... */
+ 110               		.loc 1 65 0
+ 111 0034 61E0      		ldi r22,lo8(1)
+ 112 0036 80E0      		ldi r24,0
+ 113 0038 00D0      		rcall ht1632c_bits_mask
+ 114               	.LVL6:
+ 115               	/* epilogue start */
+  66:src/ht1632c.c **** 	ht1632c_stop();
+  67:src/ht1632c.c **** }
+ 116               		.loc 1 67 0
+ 117 003a CF91      		pop r28
+ 118               	.LVL7:
+  66:src/ht1632c.c **** 	ht1632c_stop();
+ 119               		.loc 1 66 0
+ 120 003c 00C0      		rjmp ht1632c_stop
+ 121               	.LVL8:
+ 122               		.cfi_endproc
+ 123               	.LFE4:
+ 125               	.global	ht1632c_bright
+ 127               	ht1632c_bright:
+ 128               	.LFB5:
+  68:src/ht1632c.c **** 
+  69:src/ht1632c.c **** void
+  70:src/ht1632c.c **** ht1632c_bright(uint8_t val)
+  71:src/ht1632c.c **** {
+ 129               		.loc 1 71 0
+ 130               		.cfi_startproc
+ 131               	.LVL9:
+ 132               	/* prologue: function */
+ 133               	/* frame size = 0 */
+ 134               	/* stack size = 0 */
+ 135               	.L__stack_usage = 0
+  72:src/ht1632c.c **** 	ht1632c_cmd(0xa0 | (val & 0x0f));  /* 101X-vvvv-X */
+ 136               		.loc 1 72 0
+ 137 003e 8F70      		andi r24,lo8(15)
+ 138               	.LVL10:
+ 139 0040 806A      		ori r24,lo8(-96)
+ 140 0042 00C0      		rjmp ht1632c_cmd
+ 141               	.LVL11:
+ 142               		.cfi_endproc
+ 143               	.LFE5:
+ 145               	.global	ht1632c_onoff
+ 147               	ht1632c_onoff:
+ 148               	.LFB6:
+  73:src/ht1632c.c **** }
+  74:src/ht1632c.c **** 
+  75:src/ht1632c.c **** void
+  76:src/ht1632c.c **** ht1632c_onoff(uint8_t val){
+ 149               		.loc 1 76 0
+ 150               		.cfi_startproc
+ 151               	.LVL12:
+ 152               	/* prologue: function */
+ 153               	/* frame size = 0 */
+ 154               	/* stack size = 0 */
+ 155               	.L__stack_usage = 0
+  77:src/ht1632c.c **** 	ht1632c_cmd(0x00 | !!val); /* 0000-0000-X and 0000-0001-X */
+ 156               		.loc 1 77 0
+ 157 0044 91E0      		ldi r25,lo8(1)
+ 158 0046 8111      		cpse r24,__zero_reg__
+ 159 0048 00C0      		rjmp .L13
+ 160 004a 90E0      		ldi r25,0
+ 161               	.L13:
+ 162 004c 892F      		mov r24,r25
+ 163               	.LVL13:
+ 164 004e 00C0      		rjmp ht1632c_cmd
+ 165               	.LVL14:
+ 166               		.cfi_endproc
+ 167               	.LFE6:
+ 169               	.global	ht1632c_ledonoff
+ 171               	ht1632c_ledonoff:
+ 172               	.LFB7:
+  78:src/ht1632c.c **** }
+  79:src/ht1632c.c **** 
+  80:src/ht1632c.c **** void
+  81:src/ht1632c.c **** ht1632c_ledonoff(uint8_t val){
+ 173               		.loc 1 81 0
+ 174               		.cfi_startproc
+ 175               	.LVL15:
+ 176               	/* prologue: function */
+ 177               	/* frame size = 0 */
+ 178               	/* stack size = 0 */
+ 179               	.L__stack_usage = 0
+  82:src/ht1632c.c **** 	ht1632c_cmd(0x02 | !!val); /* 0000-0010-X and 0000-0011-X */
+ 180               		.loc 1 82 0
+ 181 0050 8823      		tst r24
+ 182 0052 01F0      		breq .L16
+ 183 0054 83E0      		ldi r24,lo8(3)
+ 184               	.LVL16:
+ 185 0056 00C0      		rjmp .L15
+ 186               	.LVL17:
+ 187               	.L16:
+ 188 0058 82E0      		ldi r24,lo8(2)
+ 189               	.LVL18:
+ 190               	.L15:
+ 191               		.loc 1 82 0 is_stmt 0 discriminator 3
+ 192 005a 00C0      		rjmp ht1632c_cmd
+ 193               	.LVL19:
+ 194               		.cfi_endproc
+ 195               	.LFE7:
+ 197               	.global	ht1632c_blinkonoff
+ 199               	ht1632c_blinkonoff:
+ 200               	.LFB8:
+  83:src/ht1632c.c **** }
+  84:src/ht1632c.c **** 
+  85:src/ht1632c.c **** void
+  86:src/ht1632c.c **** ht1632c_blinkonoff(uint8_t val){
+ 201               		.loc 1 86 0 is_stmt 1
+ 202               		.cfi_startproc
+ 203               	.LVL20:
+ 204               	/* prologue: function */
+ 205               	/* frame size = 0 */
+ 206               	/* stack size = 0 */
+ 207               	.L__stack_usage = 0
+  87:src/ht1632c.c **** 	ht1632c_cmd(0x08 | !!val); /* 0000-1000-X and 0000-1001-X */
+ 208               		.loc 1 87 0
+ 209 005c 8823      		tst r24
+ 210 005e 01F0      		breq .L19
+ 211 0060 89E0      		ldi r24,lo8(9)
+ 212               	.LVL21:
+ 213 0062 00C0      		rjmp .L18
+ 214               	.LVL22:
+ 215               	.L19:
+ 216 0064 88E0      		ldi r24,lo8(8)
+ 217               	.LVL23:
+ 218               	.L18:
+ 219               		.loc 1 87 0 is_stmt 0 discriminator 3
+ 220 0066 00C0      		rjmp ht1632c_cmd
+ 221               	.LVL24:
+ 222               		.cfi_endproc
+ 223               	.LFE8:
+ 225               	.global	ht1632c_slave
+ 227               	ht1632c_slave:
+ 228               	.LFB9:
+  88:src/ht1632c.c **** }
+  89:src/ht1632c.c **** 
+  90:src/ht1632c.c **** void
+  91:src/ht1632c.c **** ht1632c_slave(uint8_t val){
+ 229               		.loc 1 91 0 is_stmt 1
+ 230               		.cfi_startproc
+ 231               	.LVL25:
+ 232               	/* prologue: function */
+ 233               	/* frame size = 0 */
+ 234               	/* stack size = 0 */
+ 235               	.L__stack_usage = 0
+  92:src/ht1632c.c **** 	val = val ? 0x04 : 0;
+ 236               		.loc 1 92 0
+ 237 0068 8111      		cpse r24,__zero_reg__
+ 238 006a 84E0      		ldi r24,lo8(4)
+ 239               	.LVL26:
+ 240               	.L21:
+  93:src/ht1632c.c **** 	ht1632c_cmd(0x10 | val ); /* 0001-00XX-X and 0001-01XX-X */
+ 241               		.loc 1 93 0 discriminator 3
+ 242 006c 8061      		ori r24,lo8(16)
+ 243               	.LVL27:
+ 244 006e 00C0      		rjmp ht1632c_cmd
+ 245               	.LVL28:
+ 246               		.cfi_endproc
+ 247               	.LFE9:
+ 249               	.global	ht1632c_clock
+ 251               	ht1632c_clock:
+ 252               	.LFB10:
+  94:src/ht1632c.c **** }
+  95:src/ht1632c.c **** 
+  96:src/ht1632c.c **** void
+  97:src/ht1632c.c **** ht1632c_clock(uint8_t val){
+ 253               		.loc 1 97 0
+ 254               		.cfi_startproc
+ 255               	.LVL29:
+ 256               	/* prologue: function */
+ 257               	/* frame size = 0 */
+ 258               	/* stack size = 0 */
+ 259               	.L__stack_usage = 0
+  98:src/ht1632c.c **** 	val = val ? 0x04 : 0;
+ 260               		.loc 1 98 0
+ 261 0070 8111      		cpse r24,__zero_reg__
+ 262 0072 84E0      		ldi r24,lo8(4)
+ 263               	.LVL30:
+ 264               	.L26:
+  99:src/ht1632c.c **** 	ht1632c_cmd(0x18 | val ); /* 0001-10XX-X and 0001-11XX-X */
+ 265               		.loc 1 99 0 discriminator 3
+ 266 0074 8861      		ori r24,lo8(24)
+ 267               	.LVL31:
+ 268 0076 00C0      		rjmp ht1632c_cmd
+ 269               	.LVL32:
+ 270               		.cfi_endproc
+ 271               	.LFE10:
+ 273               	.global	ht1632c_opts
+ 275               	ht1632c_opts:
+ 276               	.LFB11:
+ 100:src/ht1632c.c **** }
+ 101:src/ht1632c.c **** 
+ 102:src/ht1632c.c **** void
+ 103:src/ht1632c.c **** ht1632c_opts(uint8_t val){
+ 277               		.loc 1 103 0
+ 278               		.cfi_startproc
+ 279               	.LVL33:
+ 280               	/* prologue: function */
+ 281               	/* frame size = 0 */
+ 282               	/* stack size = 0 */
+ 283               	.L__stack_usage = 0
+ 104:src/ht1632c.c **** 	val = (val & 0x03) << 2;
+ 284               		.loc 1 104 0
+ 285 0078 8370      		andi r24,lo8(3)
+ 286               	.LVL34:
+ 287 007a 880F      		lsl r24
+ 288 007c 880F      		lsl r24
+ 289               	.LVL35:
+ 105:src/ht1632c.c **** 	ht1632c_cmd(0x20 | val ); /* 0010-abXX-X and 0001-11XX-X */
+ 290               		.loc 1 105 0
+ 291 007e 8062      		ori r24,lo8(32)
+ 292               	.LVL36:
+ 293 0080 00C0      		rjmp ht1632c_cmd
+ 294               	.LVL37:
+ 295               		.cfi_endproc
+ 296               	.LFE11:
+ 298               	.global	ht1632c_data4
+ 300               	ht1632c_data4:
+ 301               	.LFB12:
+ 106:src/ht1632c.c **** }
+ 107:src/ht1632c.c **** 
+ 108:src/ht1632c.c **** /* write 4 bits of data to LED matrix controller */
+ 109:src/ht1632c.c **** void
+ 110:src/ht1632c.c **** ht1632c_data4(uint8_t addr, uint8_t nibble)
+ 111:src/ht1632c.c **** {
+ 302               		.loc 1 111 0
+ 303               		.cfi_startproc
+ 304               	.LVL38:
+ 305 0082 CF93      		push r28
+ 306               	.LCFI1:
+ 307               		.cfi_def_cfa_offset 3
+ 308               		.cfi_offset 28, -2
+ 309 0084 DF93      		push r29
+ 310               	.LCFI2:
+ 311               		.cfi_def_cfa_offset 4
+ 312               		.cfi_offset 29, -3
+ 313               	/* prologue: function */
+ 314               	/* frame size = 0 */
+ 315               	/* stack size = 2 */
+ 316               	.L__stack_usage = 2
+ 317 0086 D82F      		mov r29,r24
+ 318 0088 C62F      		mov r28,r22
+ 112:src/ht1632c.c **** 	ht1632c_start();
+ 319               		.loc 1 112 0
+ 320 008a 00D0      		rcall ht1632c_start
+ 321               	.LVL39:
+ 113:src/ht1632c.c **** 	HT1632C_BITS(0x05,  3 );  /* 1 0 1 */
+ 322               		.loc 1 113 0
+ 323 008c 64E0      		ldi r22,lo8(4)
+ 324 008e 85E0      		ldi r24,lo8(5)
+ 325 0090 00D0      		rcall ht1632c_bits_mask
+ 326               	.LVL40:
+ 114:src/ht1632c.c **** 	HT1632C_BITS(addr,  7 );  /* ... command ... */
+ 327               		.loc 1 114 0
+ 328 0092 60E4      		ldi r22,lo8(64)
+ 329 0094 8D2F      		mov r24,r29
+ 330 0096 00D0      		rcall ht1632c_bits_mask
+ 331               	.LVL41:
+ 115:src/ht1632c.c **** 	HT1632C_BITS(nibble,4 );
+ 332               		.loc 1 115 0
+ 333 0098 68E0      		ldi r22,lo8(8)
+ 334 009a 8C2F      		mov r24,r28
+ 335 009c 00D0      		rcall ht1632c_bits_mask
+ 336               	.LVL42:
+ 337               	/* epilogue start */
+ 116:src/ht1632c.c **** 	ht1632c_stop();
+ 117:src/ht1632c.c **** }
+ 338               		.loc 1 117 0
+ 339 009e DF91      		pop r29
+ 340               	.LVL43:
+ 341 00a0 CF91      		pop r28
+ 342               	.LVL44:
+ 116:src/ht1632c.c **** 	ht1632c_stop();
+ 343               		.loc 1 116 0
+ 344 00a2 00C0      		rjmp ht1632c_stop
+ 345               	.LVL45:
+ 346               		.cfi_endproc
+ 347               	.LFE12:
+ 349               	.global	ht1632c_data8
+ 351               	ht1632c_data8:
+ 352               	.LFB13:
+ 118:src/ht1632c.c **** 
+ 119:src/ht1632c.c **** /* write 8 bits to address addr & addr + 1 */
+ 120:src/ht1632c.c **** void
+ 121:src/ht1632c.c **** ht1632c_data8(uint8_t addr, uint8_t byte)
+ 122:src/ht1632c.c **** {
+ 353               		.loc 1 122 0
+ 354               		.cfi_startproc
+ 355               	.LVL46:
+ 356 00a4 CF93      		push r28
+ 357               	.LCFI3:
+ 358               		.cfi_def_cfa_offset 3
+ 359               		.cfi_offset 28, -2
+ 360 00a6 DF93      		push r29
+ 361               	.LCFI4:
+ 362               		.cfi_def_cfa_offset 4
+ 363               		.cfi_offset 29, -3
+ 364               	/* prologue: function */
+ 365               	/* frame size = 0 */
+ 366               	/* stack size = 2 */
+ 367               	.L__stack_usage = 2
+ 368 00a8 D82F      		mov r29,r24
+ 369 00aa C62F      		mov r28,r22
+ 123:src/ht1632c.c **** 	ht1632c_start();
+ 370               		.loc 1 123 0
+ 371 00ac 00D0      		rcall ht1632c_start
+ 372               	.LVL47:
+ 124:src/ht1632c.c **** 	HT1632C_BITS(0x05,  3 );  /* 1 0 1 */
+ 373               		.loc 1 124 0
+ 374 00ae 64E0      		ldi r22,lo8(4)
+ 375 00b0 85E0      		ldi r24,lo8(5)
+ 376 00b2 00D0      		rcall ht1632c_bits_mask
+ 377               	.LVL48:
+ 125:src/ht1632c.c **** 	HT1632C_BITS(addr,  7 );  /* ... command ... */
+ 378               		.loc 1 125 0
+ 379 00b4 60E4      		ldi r22,lo8(64)
+ 380 00b6 8D2F      		mov r24,r29
+ 381 00b8 00D0      		rcall ht1632c_bits_mask
+ 382               	.LVL49:
+ 126:src/ht1632c.c **** 	HT1632C_BITS(byte,  8 );
+ 383               		.loc 1 126 0
+ 384 00ba 60E8      		ldi r22,lo8(-128)
+ 385 00bc 8C2F      		mov r24,r28
+ 386 00be 00D0      		rcall ht1632c_bits_mask
+ 387               	.LVL50:
+ 388               	/* epilogue start */
+ 127:src/ht1632c.c **** 	ht1632c_stop();
+ 128:src/ht1632c.c **** }
+ 389               		.loc 1 128 0
+ 390 00c0 DF91      		pop r29
+ 391               	.LVL51:
+ 392 00c2 CF91      		pop r28
+ 393               	.LVL52:
+ 127:src/ht1632c.c **** 	ht1632c_stop();
+ 394               		.loc 1 127 0
+ 395 00c4 00C0      		rjmp ht1632c_stop
+ 396               	.LVL53:
+ 397               		.cfi_endproc
+ 398               	.LFE13:
+ 400               	.global	ht1632c_clear_fb
+ 402               	ht1632c_clear_fb:
+ 403               	.LFB14:
+ 129:src/ht1632c.c **** 
+ 130:src/ht1632c.c **** void
+ 131:src/ht1632c.c **** ht1632c_clear_fb(uint8_t *fbmem)
+ 132:src/ht1632c.c **** {
+ 404               		.loc 1 132 0
+ 405               		.cfi_startproc
+ 406               	.LVL54:
+ 407               	/* prologue: function */
+ 408               	/* frame size = 0 */
+ 409               	/* stack size = 0 */
+ 410               	.L__stack_usage = 0
+ 411 00c6 9C01      		movw r18,r24
+ 412 00c8 205E      		subi r18,-32
+ 413 00ca 3F4F      		sbci r19,-1
+ 414               	.LVL55:
+ 415               	.L35:
+ 133:src/ht1632c.c **** 	uint8_t i;
+ 134:src/ht1632c.c **** 	for(i=0;i<HT1632C_WIDTH;i++)
+ 135:src/ht1632c.c **** 		*fbmem++ = 0;
+ 416               		.loc 1 135 0 discriminator 2
+ 417 00cc FC01      		movw r30,r24
+ 418 00ce 1192      		st Z+,__zero_reg__
+ 419               	.LVL56:
+ 420 00d0 CF01      		movw r24,r30
+ 421               	.LVL57:
+ 134:src/ht1632c.c **** 	for(i=0;i<HT1632C_WIDTH;i++)
+ 422               		.loc 1 134 0 discriminator 2
+ 423 00d2 E217      		cp r30,r18
+ 424 00d4 F307      		cpc r31,r19
+ 425 00d6 01F4      		brne .L35
+ 426               	/* epilogue start */
+ 136:src/ht1632c.c **** }
+ 427               		.loc 1 136 0
+ 428 00d8 0895      		ret
+ 429               		.cfi_endproc
+ 430               	.LFE14:
+ 432               	.global	ht1632c_flush_fb
+ 434               	ht1632c_flush_fb:
+ 435               	.LFB15:
+ 137:src/ht1632c.c **** 
+ 138:src/ht1632c.c **** /* flush a 32x8 framebuffer to the LED matrix */
+ 139:src/ht1632c.c **** void
+ 140:src/ht1632c.c **** ht1632c_flush_fb(uint8_t *fbmem)
+ 141:src/ht1632c.c **** {
+ 436               		.loc 1 141 0
+ 437               		.cfi_startproc
+ 438               	.LVL58:
+ 439 00da CF93      		push r28
+ 440               	.LCFI5:
+ 441               		.cfi_def_cfa_offset 3
+ 442               		.cfi_offset 28, -2
+ 443 00dc DF93      		push r29
+ 444               	.LCFI6:
+ 445               		.cfi_def_cfa_offset 4
+ 446               		.cfi_offset 29, -3
+ 447               	/* prologue: function */
+ 448               	/* frame size = 0 */
+ 449               	/* stack size = 2 */
+ 450               	.L__stack_usage = 2
+ 451 00de EC01      		movw r28,r24
+ 452               	.LVL59:
+ 142:src/ht1632c.c **** 	uint8_t addr=0;
+ 143:src/ht1632c.c **** 	uint8_t fbbit=0x80;
+ 144:src/ht1632c.c **** 	uint8_t ledbit;
+ 145:src/ht1632c.c **** 
+ 146:src/ht1632c.c **** 	ht1632c_start();
+ 453               		.loc 1 146 0
+ 454 00e0 00D0      		rcall ht1632c_start
+ 455               	.LVL60:
+ 147:src/ht1632c.c **** 	HT1632C_BITS(0x05,  3 );  /* 1 0 1 */
+ 456               		.loc 1 147 0
+ 457 00e2 64E0      		ldi r22,lo8(4)
+ 458 00e4 85E0      		ldi r24,lo8(5)
+ 459 00e6 00D0      		rcall ht1632c_bits_mask
+ 460               	.LVL61:
+ 148:src/ht1632c.c **** 	HT1632C_BITS(addr,  7 );  /* ... command ... */
+ 461               		.loc 1 148 0
+ 462 00e8 60E4      		ldi r22,lo8(64)
+ 463 00ea 80E0      		ldi r24,0
+ 464 00ec 00D0      		rcall ht1632c_bits_mask
+ 465               	.LVL62:
+ 466 00ee 30E2      		ldi r19,lo8(32)
+ 143:src/ht1632c.c **** 	uint8_t fbbit=0x80;
+ 467               		.loc 1 143 0
+ 468 00f0 20E8      		ldi r18,lo8(-128)
+ 469               	.LVL63:
+ 470               	.L37:
+ 471 00f2 FE01      		movw r30,r28
+ 472 00f4 CE01      		movw r24,r28
+ 473 00f6 0896      		adiw r24,8
+ 474               	.LVL64:
+ 475               	.L43:
+ 149:src/ht1632c.c **** 
+ 150:src/ht1632c.c **** 	for(addr=0;addr < 64; addr+= 2){
+ 151:src/ht1632c.c **** 		/* for one 8-pixel-block from left to right
+ 152:src/ht1632c.c **** 		 * the framebuffer (byte) address increases and
+ 153:src/ht1632c.c **** 		 * the LED matrix controller bit number decreases, so...
+ 154:src/ht1632c.c **** 		 */
+ 155:src/ht1632c.c **** 
+ 156:src/ht1632c.c **** 		ledbit = 0x80; /* start MSB */
+ 157:src/ht1632c.c **** 		while(ledbit){
+ 158:src/ht1632c.c **** 			HT1632C_PORT &= ~ HT1632C_WRCLK;
+ 476               		.loc 1 158 0
+ 477 00f8 C498      		cbi 0x18,4
+ 159:src/ht1632c.c **** 			if(*fbmem & fbbit)
+ 478               		.loc 1 159 0
+ 479 00fa 4191      		ld r20,Z+
+ 480 00fc 4223      		and r20,r18
+ 481 00fe 01F0      		breq .L38
+ 160:src/ht1632c.c **** 				HT1632C_PORT |= HT1632C_DATA;
+ 482               		.loc 1 160 0
+ 483 0100 C59A      		sbi 0x18,5
+ 484 0102 00C0      		rjmp .L39
+ 485               	.L38:
+ 161:src/ht1632c.c **** 			else
+ 162:src/ht1632c.c **** 				HT1632C_PORT &= ~ HT1632C_DATA;
+ 486               		.loc 1 162 0
+ 487 0104 C598      		cbi 0x18,5
+ 488               	.L39:
+ 163:src/ht1632c.c **** 			fbmem++;	/* next column in FB */
+ 489               		.loc 1 163 0
+ 490 0106 EF01      		movw r28,r30
+ 491               	.LVL65:
+ 164:src/ht1632c.c **** 			ledbit >>= 1;	/* next column in LED controller */
+ 165:src/ht1632c.c **** 			HT1632C_PORT |= HT1632C_WRCLK;
+ 492               		.loc 1 165 0
+ 493 0108 C49A      		sbi 0x18,4
+ 157:src/ht1632c.c **** 		while(ledbit){
+ 494               		.loc 1 157 0
+ 495 010a E817      		cp r30,r24
+ 496 010c F907      		cpc r31,r25
+ 497 010e 01F4      		brne .L43
+ 498               	.LVL66:
+ 166:src/ht1632c.c **** 		}
+ 167:src/ht1632c.c **** 		fbmem -= 8;		/* move back FB memory pointer */
+ 168:src/ht1632c.c **** 
+ 169:src/ht1632c.c **** 		fbbit >>= 1;		/* move to next row in FB */
+ 499               		.loc 1 169 0
+ 500 0110 2695      		lsr r18
+ 501               	.LVL67:
+ 170:src/ht1632c.c **** 		if(!fbbit){		/* reached bottom row?... */
+ 502               		.loc 1 170 0
+ 503 0112 01F0      		breq .L44
+ 167:src/ht1632c.c **** 		fbmem -= 8;		/* move back FB memory pointer */
+ 504               		.loc 1 167 0
+ 505 0114 EC01      		movw r28,r24
+ 506 0116 2897      		sbiw r28,8
+ 507               	.LVL68:
+ 508 0118 00C0      		rjmp .L41
+ 509               	.LVL69:
+ 510               	.L44:
+ 171:src/ht1632c.c **** 			fbmem += 8;	/* move to next block */
+ 172:src/ht1632c.c **** 			fbbit=0x80;	/* start at 1 */
+ 511               		.loc 1 172 0
+ 512 011a 20E8      		ldi r18,lo8(-128)
+ 513               	.LVL70:
+ 514               	.L41:
+ 515 011c 3150      		subi r19,lo8(-(-1))
+ 516               	.LVL71:
+ 150:src/ht1632c.c **** 	for(addr=0;addr < 64; addr+= 2){
+ 517               		.loc 1 150 0
+ 518 011e 01F4      		brne .L37
+ 519               	/* epilogue start */
+ 173:src/ht1632c.c **** 		}
+ 174:src/ht1632c.c **** 	}
+ 175:src/ht1632c.c **** 
+ 176:src/ht1632c.c **** 	ht1632c_stop();
+ 177:src/ht1632c.c **** 
+ 178:src/ht1632c.c **** }
+ 520               		.loc 1 178 0
+ 521 0120 DF91      		pop r29
+ 522 0122 CF91      		pop r28
+ 523               	.LVL72:
+ 176:src/ht1632c.c **** 	ht1632c_stop();
+ 524               		.loc 1 176 0
+ 525 0124 00C0      		rjmp ht1632c_stop
+ 526               	.LVL73:
+ 527               		.cfi_endproc
+ 528               	.LFE15:
+ 530               	.global	ht1632c_init
+ 532               	ht1632c_init:
+ 533               	.LFB16:
+ 179:src/ht1632c.c **** 
+ 180:src/ht1632c.c **** void
+ 181:src/ht1632c.c **** ht1632c_init(void)
+ 182:src/ht1632c.c **** {
+ 534               		.loc 1 182 0
+ 535               		.cfi_startproc
+ 536 0126 CF93      		push r28
+ 537               	.LCFI7:
+ 538               		.cfi_def_cfa_offset 3
+ 539               		.cfi_offset 28, -2
+ 540               	/* prologue: function */
+ 541               	/* frame size = 0 */
+ 542               	/* stack size = 1 */
+ 543               	.L__stack_usage = 1
+ 544               	.LVL74:
+ 183:src/ht1632c.c **** 	uint8_t mask = HT1632C_WRCLK | HT1632C_CS | HT1632C_DATA;
+ 184:src/ht1632c.c **** 	int i;
+ 185:src/ht1632c.c **** 
+ 186:src/ht1632c.c **** 	HT1632C_PORT |= mask;
+ 545               		.loc 1 186 0
+ 546 0128 88B3      		in r24,0x18
+ 547 012a 8863      		ori r24,lo8(56)
+ 548 012c 88BB      		out 0x18,r24
+ 187:src/ht1632c.c **** 	HT1632C_DDR  |= mask;
+ 549               		.loc 1 187 0
+ 550 012e 87B3      		in r24,0x17
+ 551 0130 8863      		ori r24,lo8(56)
+ 552 0132 87BB      		out 0x17,r24
+ 188:src/ht1632c.c **** 
+ 189:src/ht1632c.c **** 	ht1632c_start();
+ 553               		.loc 1 189 0
+ 554 0134 00D0      		rcall ht1632c_start
+ 555               	.LVL75:
+ 190:src/ht1632c.c **** 	ht1632c_stop();
+ 556               		.loc 1 190 0
+ 557 0136 00D0      		rcall ht1632c_stop
+ 558               	.LVL76:
+ 559               	.LBB16:
+ 560               	.LBB17:
+  77:src/ht1632c.c **** 	ht1632c_cmd(0x00 | !!val); /* 0000-0000-X and 0000-0001-X */
+ 561               		.loc 1 77 0
+ 562 0138 80E0      		ldi r24,0
+ 563 013a 00D0      		rcall ht1632c_cmd
+ 564               	.LVL77:
+ 565               	.LBE17:
+ 566               	.LBE16:
+ 567               	.LBB18:
+ 568               	.LBB19:
+ 569 013c 81E0      		ldi r24,lo8(1)
+ 570 013e 00D0      		rcall ht1632c_cmd
+ 571               	.LVL78:
+ 572               	.LBE19:
+ 573               	.LBE18:
+ 574               	.LBB20:
+ 575               	.LBB21:
+  93:src/ht1632c.c **** 	ht1632c_cmd(0x10 | val ); /* 0001-00XX-X and 0001-01XX-X */
+ 576               		.loc 1 93 0
+ 577 0140 84E1      		ldi r24,lo8(20)
+ 578 0142 00D0      		rcall ht1632c_cmd
+ 579               	.LVL79:
+ 580               	.LBE21:
+ 581               	.LBE20:
+ 582               	.LBB22:
+ 583               	.LBB23:
+  99:src/ht1632c.c **** 	ht1632c_cmd(0x18 | val ); /* 0001-10XX-X and 0001-11XX-X */
+ 584               		.loc 1 99 0
+ 585 0144 88E1      		ldi r24,lo8(24)
+ 586 0146 00D0      		rcall ht1632c_cmd
+ 587               	.LVL80:
+ 588               	.LBE23:
+ 589               	.LBE22:
+ 590               	.LBB24:
+ 591               	.LBB25:
+ 105:src/ht1632c.c **** 	ht1632c_cmd(0x20 | val ); /* 0010-abXX-X and 0001-11XX-X */
+ 592               		.loc 1 105 0
+ 593 0148 80E2      		ldi r24,lo8(32)
+ 594 014a 00D0      		rcall ht1632c_cmd
+ 595               	.LVL81:
+ 596               	.LBE25:
+ 597               	.LBE24:
+ 598               	.LBB26:
+ 599               	.LBB27:
+  72:src/ht1632c.c **** 	ht1632c_cmd(0xa0 | (val & 0x0f));  /* 101X-vvvv-X */
+ 600               		.loc 1 72 0
+ 601 014c 87EA      		ldi r24,lo8(-89)
+ 602 014e 00D0      		rcall ht1632c_cmd
+ 603               	.LVL82:
+ 604 0150 C0E0      		ldi r28,0
+ 605               	.LVL83:
+ 606               	.L47:
+ 607               	.LBE27:
+ 608               	.LBE26:
+ 191:src/ht1632c.c **** 
+ 192:src/ht1632c.c **** 	ht1632c_onoff(0);
+ 193:src/ht1632c.c **** 	ht1632c_onoff(1);
+ 194:src/ht1632c.c **** 	ht1632c_slave(1); /* master mode */
+ 195:src/ht1632c.c **** 	ht1632c_clock(0); /* internal RC clock */
+ 196:src/ht1632c.c **** 	ht1632c_opts(0);  /* 0: 8 commons, n-mos outputs */
+ 197:src/ht1632c.c **** 	ht1632c_bright(7);
+ 198:src/ht1632c.c **** 
+ 199:src/ht1632c.c **** 	/* clear buffer memory */
+ 200:src/ht1632c.c **** 	for(i=0;i<64;i++)
+ 201:src/ht1632c.c **** 		ht1632c_data4(i,i);
+ 609               		.loc 1 201 0 discriminator 2
+ 610 0152 6C2F      		mov r22,r28
+ 611 0154 8C2F      		mov r24,r28
+ 612 0156 00D0      		rcall ht1632c_data4
+ 613               	.LVL84:
+ 614 0158 CF5F      		subi r28,lo8(-(1))
+ 200:src/ht1632c.c **** 	for(i=0;i<64;i++)
+ 615               		.loc 1 200 0 discriminator 2
+ 616 015a C034      		cpi r28,lo8(64)
+ 617 015c 01F4      		brne .L47
+ 618               	.LVL85:
+ 619               	.LBB28:
+ 620               	.LBB29:
+  82:src/ht1632c.c **** 	ht1632c_cmd(0x02 | !!val); /* 0000-0010-X and 0000-0011-X */
+ 621               		.loc 1 82 0
+ 622 015e 83E0      		ldi r24,lo8(3)
+ 623               	/* epilogue start */
+ 624               	.LBE29:
+ 625               	.LBE28:
+ 202:src/ht1632c.c **** 
+ 203:src/ht1632c.c **** 	ht1632c_ledonoff(1); /* turn on */
+ 204:src/ht1632c.c **** }
+ 626               		.loc 1 204 0
+ 627 0160 CF91      		pop r28
+ 628               	.LBB31:
+ 629               	.LBB30:
+  82:src/ht1632c.c **** 	ht1632c_cmd(0x02 | !!val); /* 0000-0010-X and 0000-0011-X */
+ 630               		.loc 1 82 0
+ 631 0162 00C0      		rjmp ht1632c_cmd
+ 632               	.LVL86:
+ 633               	.LBE30:
+ 634               	.LBE31:
+ 635               		.cfi_endproc
+ 636               	.LFE16:
+ 638               	.Letext0:
+ 639               		.file 2 "/usr/lib/avr/include/stdint.h"
+DEFINED SYMBOLS
+                            *ABS*:0000000000000000 ht1632c.c
+     /tmp/cclqCq2A.s:2      *ABS*:000000000000003e __SP_H__
+     /tmp/cclqCq2A.s:3      *ABS*:000000000000003d __SP_L__
+     /tmp/cclqCq2A.s:4      *ABS*:000000000000003f __SREG__
+     /tmp/cclqCq2A.s:5      *ABS*:0000000000000000 __tmp_reg__
+     /tmp/cclqCq2A.s:6      *ABS*:0000000000000001 __zero_reg__
+     /tmp/cclqCq2A.s:11     .text:0000000000000000 ht1632c_start
+     /tmp/cclqCq2A.s:27     .text:0000000000000004 ht1632c_stop
+     /tmp/cclqCq2A.s:42     .text:0000000000000008 ht1632c_bits_mask
+     /tmp/cclqCq2A.s:83     .text:0000000000000022 ht1632c_cmd
+     /tmp/cclqCq2A.s:127    .text:000000000000003e ht1632c_bright
+     /tmp/cclqCq2A.s:147    .text:0000000000000044 ht1632c_onoff
+     /tmp/cclqCq2A.s:171    .text:0000000000000050 ht1632c_ledonoff
+     /tmp/cclqCq2A.s:199    .text:000000000000005c ht1632c_blinkonoff
+     /tmp/cclqCq2A.s:227    .text:0000000000000068 ht1632c_slave
+     /tmp/cclqCq2A.s:251    .text:0000000000000070 ht1632c_clock
+     /tmp/cclqCq2A.s:275    .text:0000000000000078 ht1632c_opts
+     /tmp/cclqCq2A.s:300    .text:0000000000000082 ht1632c_data4
+     /tmp/cclqCq2A.s:351    .text:00000000000000a4 ht1632c_data8
+     /tmp/cclqCq2A.s:402    .text:00000000000000c6 ht1632c_clear_fb
+     /tmp/cclqCq2A.s:434    .text:00000000000000da ht1632c_flush_fb
+     /tmp/cclqCq2A.s:532    .text:0000000000000126 ht1632c_init
+
+NO UNDEFINED SYMBOLS

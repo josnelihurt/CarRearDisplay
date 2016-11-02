@@ -1,0 +1,1216 @@
+   1               		.file	"main.c"
+   2               	__SP_H__ = 0x3e
+   3               	__SP_L__ = 0x3d
+   4               	__SREG__ = 0x3f
+   5               	__tmp_reg__ = 0
+   6               	__zero_reg__ = 1
+   7               		.text
+   8               	.Ltext0:
+   9               		.cfi_sections	.debug_frame
+  11               	uart_putchar:
+  12               	.LFB10:
+  13               		.file 1 "src/main.c"
+   1:src/main.c    **** #define BAUDRATE 57600
+   2:src/main.c    **** 
+   3:src/main.c    **** #include <stdint.h>
+   4:src/main.c    **** #include <avr/io.h>
+   5:src/main.c    **** #include <avr/wdt.h>
+   6:src/main.c    **** #include <avr/boot.h>
+   7:src/main.c    **** #include <avr/pgmspace.h>
+   8:src/main.c    **** #include <avr/eeprom.h>
+   9:src/main.c    **** #include <avr/interrupt.h>
+  10:src/main.c    **** #include <util/delay.h>
+  11:src/main.c    **** #include <avr/io.h>
+  12:src/main.c    **** #include <stdio.h> 
+  13:src/main.c    **** #include "ht1632c.h"
+  14:src/main.c    **** 
+  15:src/main.c    **** #define UART_CALC_BAUDRATE(baudRate) ((uint32_t)((F_CPU) + ((uint32_t)baudRate * 8UL)) / ((uint32_t
+  16:src/main.c    **** 
+  17:src/main.c    **** // TIMER0 with prescaler clkI/O/1024
+  18:src/main.c    **** #define TIMER0_PRESCALER (1 << CS02) | (1 << CS00)
+  19:src/main.c    **** 
+  20:src/main.c    **** //test 23AA55AA55AA55AA55AA55AA55AA55AA55AA55AA55AA55AA55AA55AA55AA55AA55
+  21:src/main.c    **** 
+  22:src/main.c    **** //#define DEBUG_PRINT printf
+  23:src/main.c    **** #define DEBUG_PRINT	//
+  24:src/main.c    **** 
+  25:src/main.c    **** enum rxCommand
+  26:src/main.c    **** {
+  27:src/main.c    **** 	NONE = 0x00, SET_ROW = 0x20, BRIGHT = 0x21, BLINK = 0x22, GRAM = 0x23,
+  28:src/main.c    **** };
+  29:src/main.c    **** 
+  30:src/main.c    **** typedef enum rxCommand rxCommand_t;
+  31:src/main.c    **** 
+  32:src/main.c    **** static int uart_putchar(char c, FILE *stream);
+  33:src/main.c    **** 
+  34:src/main.c    **** static FILE uartStdout = FDEV_SETUP_STREAM(uart_putchar, NULL,
+  35:src/main.c    **** 		_FDEV_SETUP_WRITE);
+  36:src/main.c    **** 
+  37:src/main.c    **** uint32_t timer0Counter = 0;
+  38:src/main.c    **** uint8_t isCommand = 1;
+  39:src/main.c    **** uint8_t rxParameters[32];
+  40:src/main.c    **** uint8_t parameterIndex;
+  41:src/main.c    **** rxCommand_t lastCommand;
+  42:src/main.c    **** 
+  43:src/main.c    **** void uart_puts(const char *s);
+  44:src/main.c    **** void sendchar(uint8_t data);
+  45:src/main.c    **** uint8_t recvchar(void);
+  46:src/main.c    **** void processCommand(uint8_t command);
+  47:src/main.c    **** 
+  48:src/main.c    **** ISR(TIMER0_OVF_vect)
+  49:src/main.c    **** {
+  50:src/main.c    **** 	// handle interrupt
+  51:src/main.c    **** 	if(timer0Counter++ > 4)
+  52:src/main.c    **** 	{
+  53:src/main.c    **** 		if(!isCommand)
+  54:src/main.c    **** 		{
+  55:src/main.c    **** 			isCommand = 1;
+  56:src/main.c    **** 			uart_puts("\nt_out");
+  57:src/main.c    **** 		}
+  58:src/main.c    **** 		timer0Counter = 0;
+  59:src/main.c    **** 		lastCommand = NONE;
+  60:src/main.c    **** 		parameterIndex = 0;
+  61:src/main.c    **** 	}
+  62:src/main.c    **** }
+  63:src/main.c    **** 
+  64:src/main.c    **** ISR(USART_RXC_vect)
+  65:src/main.c    **** {
+  66:src/main.c    **** 	uint8_t value;
+  67:src/main.c    **** 	char buffer[24];
+  68:src/main.c    **** 	value = UDR; // Fetch the received byte value into the variable "ByteReceived"
+  69:src/main.c    **** 	timer0Counter = 0;
+  70:src/main.c    **** 	if(isCommand)
+  71:src/main.c    **** 	{
+  72:src/main.c    **** 		isCommand = 0;
+  73:src/main.c    **** 		lastCommand = value;
+  74:src/main.c    **** 		parameterIndex = 0;
+  75:src/main.c    **** 	}
+  76:src/main.c    **** 	else
+  77:src/main.c    **** 	{
+  78:src/main.c    **** 		rxParameters[parameterIndex++] = value;
+  79:src/main.c    **** 		sprintf(buffer,"\n0x%2x[%d] = 0x%x",(int)lastCommand,parameterIndex - 1,value);
+  80:src/main.c    **** 		DEBUG_PRINT(buffer);
+  81:src/main.c    **** 		processCommand(lastCommand);
+  82:src/main.c    **** 	}
+  83:src/main.c    **** }
+  84:src/main.c    **** 
+  85:src/main.c    **** static int uart_putchar(char c, FILE *stream)
+  86:src/main.c    **** {
+  14               		.loc 1 86 0
+  15               		.cfi_startproc
+  16               	.LVL0:
+  17 0000 CF93      		push r28
+  18               	.LCFI0:
+  19               		.cfi_def_cfa_offset 3
+  20               		.cfi_offset 28, -2
+  21               	/* prologue: function */
+  22               	/* frame size = 0 */
+  23               	/* stack size = 1 */
+  24               	.L__stack_usage = 1
+  25 0002 C82F      		mov r28,r24
+  87:src/main.c    **** 	if (c == '\n')
+  26               		.loc 1 87 0
+  27 0004 8A30      		cpi r24,lo8(10)
+  28 0006 01F4      		brne .L4
+  88:src/main.c    **** 		uart_putchar('\r', stream);
+  29               		.loc 1 88 0
+  30 0008 8DE0      		ldi r24,lo8(13)
+  31               	.LVL1:
+  32 000a 00D0      		rcall uart_putchar
+  33               	.LVL2:
+  34               	.L4:
+  89:src/main.c    **** 	loop_until_bit_is_set(UCSRA, UDRE);
+  35               		.loc 1 89 0 discriminator 1
+  36 000c 5D9B      		sbis 0xb,5
+  37 000e 00C0      		rjmp .L4
+  90:src/main.c    **** 	UDR = c;
+  38               		.loc 1 90 0
+  39 0010 CCB9      		out 0xc,r28
+  91:src/main.c    **** 	return 0;
+  92:src/main.c    **** }
+  40               		.loc 1 92 0
+  41 0012 80E0      		ldi r24,0
+  42 0014 90E0      		ldi r25,0
+  43               	/* epilogue start */
+  44 0016 CF91      		pop r28
+  45               	.LVL3:
+  46 0018 0895      		ret
+  47               		.cfi_endproc
+  48               	.LFE10:
+  50               		.section	.rodata.str1.1,"aMS",@progbits,1
+  51               	.LC0:
+  52 0000 4F4B 00   		.string	"OK"
+  53               		.text
+  54               	.global	processCommand
+  56               	processCommand:
+  57               	.LFB11:
+  93:src/main.c    **** 
+  94:src/main.c    **** void processCommand(uint8_t command)
+  95:src/main.c    **** {
+  58               		.loc 1 95 0
+  59               		.cfi_startproc
+  60               	.LVL4:
+  61 001a CF93      		push r28
+  62               	.LCFI1:
+  63               		.cfi_def_cfa_offset 3
+  64               		.cfi_offset 28, -2
+  65               	/* prologue: function */
+  66               	/* frame size = 0 */
+  67               	/* stack size = 1 */
+  68               	.L__stack_usage = 1
+  96:src/main.c    **** 	switch (command)
+  69               		.loc 1 96 0
+  70 001c 8132      		cpi r24,lo8(33)
+  71 001e 01F0      		breq .L8
+  72 0020 00F4      		brsh .L9
+  73 0022 8032      		cpi r24,lo8(32)
+  74 0024 01F0      		breq .L10
+  75 0026 00C0      		rjmp .L6
+  76               	.L9:
+  77 0028 8232      		cpi r24,lo8(34)
+  78 002a 01F0      		breq .L11
+  79 002c 8332      		cpi r24,lo8(35)
+  80 002e 01F0      		breq .L12
+  81 0030 00C0      		rjmp .L6
+  82               	.L10:
+  97:src/main.c    **** 	{
+  98:src/main.c    **** 	case SET_ROW:
+  99:src/main.c    **** 		if (parameterIndex == 2)
+  83               		.loc 1 99 0
+  84 0032 8091 0000 		lds r24,parameterIndex
+  85               	.LVL5:
+  86 0036 8230      		cpi r24,lo8(2)
+  87 0038 01F4      		brne .L6
+ 100:src/main.c    **** 		{
+ 101:src/main.c    **** 			ht1632c_data8(rxParameters[0], rxParameters[1]);
+  88               		.loc 1 101 0
+  89 003a 6091 0000 		lds r22,rxParameters+1
+  90 003e 8091 0000 		lds r24,rxParameters
+  91 0042 00D0      		rcall ht1632c_data8
+  92               	.LVL6:
+  93 0044 00C0      		rjmp .L13
+  94               	.LVL7:
+  95               	.L8:
+ 102:src/main.c    **** 			isCommand = 1;
+ 103:src/main.c    **** 			printf("OK");
+ 104:src/main.c    **** 		}
+ 105:src/main.c    **** 		break;
+ 106:src/main.c    **** 	case BRIGHT:
+ 107:src/main.c    **** 		if (parameterIndex == 1)
+  96               		.loc 1 107 0
+  97 0046 C091 0000 		lds r28,parameterIndex
+  98 004a C130      		cpi r28,lo8(1)
+  99 004c 01F4      		brne .L6
+ 108:src/main.c    **** 		{
+ 109:src/main.c    **** 			ht1632c_bright(rxParameters[0]);
+ 100               		.loc 1 109 0
+ 101 004e 8091 0000 		lds r24,rxParameters
+ 102               	.LVL8:
+ 103 0052 00D0      		rcall ht1632c_bright
+ 104               	.LVL9:
+ 105 0054 00C0      		rjmp .L15
+ 106               	.LVL10:
+ 107               	.L11:
+ 110:src/main.c    **** 			isCommand = 1;
+ 111:src/main.c    **** 			printf("OK");
+ 112:src/main.c    **** 		}
+ 113:src/main.c    **** 		break;
+ 114:src/main.c    **** 	case BLINK:
+ 115:src/main.c    **** 		if (parameterIndex == 1)
+ 108               		.loc 1 115 0
+ 109 0056 C091 0000 		lds r28,parameterIndex
+ 110 005a C130      		cpi r28,lo8(1)
+ 111 005c 01F4      		brne .L6
+ 116:src/main.c    **** 		{
+ 117:src/main.c    **** 			ht1632c_blinkonoff(rxParameters[0]);
+ 112               		.loc 1 117 0
+ 113 005e 8091 0000 		lds r24,rxParameters
+ 114               	.LVL11:
+ 115 0062 00D0      		rcall ht1632c_blinkonoff
+ 116               	.LVL12:
+ 117               	.L15:
+ 118:src/main.c    **** 			isCommand = 1;
+ 118               		.loc 1 118 0
+ 119 0064 C093 0000 		sts isCommand,r28
+ 120 0068 00C0      		rjmp .L14
+ 121               	.LVL13:
+ 122               	.L12:
+ 119:src/main.c    **** 			printf("OK");
+ 120:src/main.c    **** 		}
+ 121:src/main.c    **** 		break;
+ 122:src/main.c    **** 	case GRAM:
+ 123:src/main.c    **** 		if (parameterIndex == 32)
+ 123               		.loc 1 123 0
+ 124 006a 8091 0000 		lds r24,parameterIndex
+ 125               	.LVL14:
+ 126 006e 8032      		cpi r24,lo8(32)
+ 127 0070 01F4      		brne .L6
+ 124:src/main.c    **** 		{
+ 125:src/main.c    **** 			ht1632c_flush_fb(rxParameters);
+ 128               		.loc 1 125 0
+ 129 0072 80E0      		ldi r24,lo8(rxParameters)
+ 130 0074 90E0      		ldi r25,hi8(rxParameters)
+ 131 0076 00D0      		rcall ht1632c_flush_fb
+ 132               	.LVL15:
+ 133               	.L13:
+ 126:src/main.c    **** 			isCommand = 1;
+ 134               		.loc 1 126 0
+ 135 0078 81E0      		ldi r24,lo8(1)
+ 136 007a 8093 0000 		sts isCommand,r24
+ 137               	.L14:
+ 127:src/main.c    **** 			printf("OK");
+ 138               		.loc 1 127 0
+ 139 007e 80E0      		ldi r24,lo8(.LC0)
+ 140 0080 90E0      		ldi r25,hi8(.LC0)
+ 141 0082 9F93      		push r25
+ 142               	.LCFI2:
+ 143               		.cfi_def_cfa_offset 4
+ 144 0084 8F93      		push r24
+ 145               	.LCFI3:
+ 146               		.cfi_def_cfa_offset 5
+ 147 0086 00D0      		rcall printf
+ 148               	.LVL16:
+ 149 0088 0F90      		pop __tmp_reg__
+ 150 008a 0F90      		pop __tmp_reg__
+ 151               	.LCFI4:
+ 152               		.cfi_def_cfa_offset 3
+ 153               	.L6:
+ 154               	/* epilogue start */
+ 128:src/main.c    **** 		}
+ 129:src/main.c    **** 		break;
+ 130:src/main.c    **** 	default:
+ 131:src/main.c    **** 		break;
+ 132:src/main.c    **** 	}
+ 133:src/main.c    **** }
+ 155               		.loc 1 133 0
+ 156 008c CF91      		pop r28
+ 157 008e 0895      		ret
+ 158               		.cfi_endproc
+ 159               	.LFE11:
+ 161               		.section	.rodata.str1.1
+ 162               	.LC1:
+ 163 0003 0A30 7825 		.string	"\n0x%2x[%d] = 0x%x"
+ 163      3278 5B25 
+ 163      645D 203D 
+ 163      2030 7825 
+ 163      7800 
+ 164               		.text
+ 165               	.global	__vector_11
+ 167               	__vector_11:
+ 168               	.LFB9:
+  65:src/main.c    **** {
+ 169               		.loc 1 65 0
+ 170               		.cfi_startproc
+ 171 0090 1F92      		push r1
+ 172               	.LCFI5:
+ 173               		.cfi_def_cfa_offset 3
+ 174               		.cfi_offset 1, -2
+ 175 0092 0F92      		push r0
+ 176               	.LCFI6:
+ 177               		.cfi_def_cfa_offset 4
+ 178               		.cfi_offset 0, -3
+ 179 0094 0FB6      		in r0,__SREG__
+ 180 0096 0F92      		push r0
+ 181 0098 1124      		clr __zero_reg__
+ 182 009a 2F93      		push r18
+ 183               	.LCFI7:
+ 184               		.cfi_def_cfa_offset 5
+ 185               		.cfi_offset 18, -4
+ 186 009c 3F93      		push r19
+ 187               	.LCFI8:
+ 188               		.cfi_def_cfa_offset 6
+ 189               		.cfi_offset 19, -5
+ 190 009e 4F93      		push r20
+ 191               	.LCFI9:
+ 192               		.cfi_def_cfa_offset 7
+ 193               		.cfi_offset 20, -6
+ 194 00a0 5F93      		push r21
+ 195               	.LCFI10:
+ 196               		.cfi_def_cfa_offset 8
+ 197               		.cfi_offset 21, -7
+ 198 00a2 6F93      		push r22
+ 199               	.LCFI11:
+ 200               		.cfi_def_cfa_offset 9
+ 201               		.cfi_offset 22, -8
+ 202 00a4 7F93      		push r23
+ 203               	.LCFI12:
+ 204               		.cfi_def_cfa_offset 10
+ 205               		.cfi_offset 23, -9
+ 206 00a6 8F93      		push r24
+ 207               	.LCFI13:
+ 208               		.cfi_def_cfa_offset 11
+ 209               		.cfi_offset 24, -10
+ 210 00a8 9F93      		push r25
+ 211               	.LCFI14:
+ 212               		.cfi_def_cfa_offset 12
+ 213               		.cfi_offset 25, -11
+ 214 00aa AF93      		push r26
+ 215               	.LCFI15:
+ 216               		.cfi_def_cfa_offset 13
+ 217               		.cfi_offset 26, -12
+ 218 00ac BF93      		push r27
+ 219               	.LCFI16:
+ 220               		.cfi_def_cfa_offset 14
+ 221               		.cfi_offset 27, -13
+ 222 00ae EF93      		push r30
+ 223               	.LCFI17:
+ 224               		.cfi_def_cfa_offset 15
+ 225               		.cfi_offset 30, -14
+ 226 00b0 FF93      		push r31
+ 227               	.LCFI18:
+ 228               		.cfi_def_cfa_offset 16
+ 229               		.cfi_offset 31, -15
+ 230 00b2 CF93      		push r28
+ 231               	.LCFI19:
+ 232               		.cfi_def_cfa_offset 17
+ 233               		.cfi_offset 28, -16
+ 234 00b4 DF93      		push r29
+ 235               	.LCFI20:
+ 236               		.cfi_def_cfa_offset 18
+ 237               		.cfi_offset 29, -17
+ 238 00b6 CDB7      		in r28,__SP_L__
+ 239 00b8 DEB7      		in r29,__SP_H__
+ 240               	.LCFI21:
+ 241               		.cfi_def_cfa_register 28
+ 242 00ba 6897      		sbiw r28,24
+ 243               	.LCFI22:
+ 244               		.cfi_def_cfa_offset 42
+ 245 00bc DEBF      		out __SP_H__,r29
+ 246 00be CDBF      		out __SP_L__,r28
+ 247               	/* prologue: Signal */
+ 248               	/* frame size = 24 */
+ 249               	/* stack size = 41 */
+ 250               	.L__stack_usage = 41
+  68:src/main.c    **** 	value = UDR; // Fetch the received byte value into the variable "ByteReceived"
+ 251               		.loc 1 68 0
+ 252 00c0 9CB1      		in r25,0xc
+ 253               	.LVL17:
+  69:src/main.c    **** 	timer0Counter = 0;
+ 254               		.loc 1 69 0
+ 255 00c2 1092 0000 		sts timer0Counter,__zero_reg__
+ 256 00c6 1092 0000 		sts timer0Counter+1,__zero_reg__
+ 257 00ca 1092 0000 		sts timer0Counter+2,__zero_reg__
+ 258 00ce 1092 0000 		sts timer0Counter+3,__zero_reg__
+  70:src/main.c    **** 	if(isCommand)
+ 259               		.loc 1 70 0
+ 260 00d2 8091 0000 		lds r24,isCommand
+ 261 00d6 8823      		tst r24
+ 262 00d8 01F0      		breq .L17
+  72:src/main.c    **** 		isCommand = 0;
+ 263               		.loc 1 72 0
+ 264 00da 1092 0000 		sts isCommand,__zero_reg__
+  73:src/main.c    **** 		lastCommand = value;
+ 265               		.loc 1 73 0
+ 266 00de 9093 0000 		sts lastCommand,r25
+  74:src/main.c    **** 		parameterIndex = 0;
+ 267               		.loc 1 74 0
+ 268 00e2 1092 0000 		sts parameterIndex,__zero_reg__
+ 269 00e6 00C0      		rjmp .L16
+ 270               	.L17:
+  78:src/main.c    **** 		rxParameters[parameterIndex++] = value;
+ 271               		.loc 1 78 0
+ 272 00e8 E091 0000 		lds r30,parameterIndex
+ 273 00ec 81E0      		ldi r24,lo8(1)
+ 274 00ee 8E0F      		add r24,r30
+ 275 00f0 8093 0000 		sts parameterIndex,r24
+ 276 00f4 F0E0      		ldi r31,0
+ 277 00f6 E050      		subi r30,lo8(-(rxParameters))
+ 278 00f8 F040      		sbci r31,hi8(-(rxParameters))
+ 279 00fa 9083      		st Z,r25
+  79:src/main.c    **** 		sprintf(buffer,"\n0x%2x[%d] = 0x%x",(int)lastCommand,parameterIndex - 1,value);
+ 280               		.loc 1 79 0
+ 281 00fc 1F92      		push __zero_reg__
+ 282 00fe 9F93      		push r25
+ 283 0100 90E0      		ldi r25,0
+ 284               	.LVL18:
+ 285 0102 0197      		sbiw r24,1
+ 286 0104 9F93      		push r25
+ 287 0106 8F93      		push r24
+ 288 0108 8091 0000 		lds r24,lastCommand
+ 289 010c 1F92      		push __zero_reg__
+ 290 010e 8F93      		push r24
+ 291 0110 80E0      		ldi r24,lo8(.LC1)
+ 292 0112 90E0      		ldi r25,hi8(.LC1)
+ 293 0114 9F93      		push r25
+ 294 0116 8F93      		push r24
+ 295 0118 CE01      		movw r24,r28
+ 296 011a 0196      		adiw r24,1
+ 297 011c 9F93      		push r25
+ 298 011e 8F93      		push r24
+ 299 0120 00D0      		rcall sprintf
+ 300               	.LVL19:
+  81:src/main.c    **** 		processCommand(lastCommand);
+ 301               		.loc 1 81 0
+ 302 0122 8091 0000 		lds r24,lastCommand
+ 303 0126 00D0      		rcall processCommand
+ 304               	.LVL20:
+ 305 0128 0FB6      		in __tmp_reg__,__SREG__
+ 306 012a F894      		cli
+ 307 012c DEBF      		out __SP_H__,r29
+ 308 012e 0FBE      		out __SREG__,__tmp_reg__
+ 309 0130 CDBF      		out __SP_L__,r28
+ 310               	.L16:
+ 311               	/* epilogue start */
+  83:src/main.c    **** }
+ 312               		.loc 1 83 0
+ 313 0132 6896      		adiw r28,24
+ 314 0134 0FB6      		in __tmp_reg__,__SREG__
+ 315 0136 F894      		cli
+ 316 0138 DEBF      		out __SP_H__,r29
+ 317 013a 0FBE      		out __SREG__,__tmp_reg__
+ 318 013c CDBF      		out __SP_L__,r28
+ 319 013e DF91      		pop r29
+ 320 0140 CF91      		pop r28
+ 321 0142 FF91      		pop r31
+ 322 0144 EF91      		pop r30
+ 323 0146 BF91      		pop r27
+ 324 0148 AF91      		pop r26
+ 325 014a 9F91      		pop r25
+ 326 014c 8F91      		pop r24
+ 327 014e 7F91      		pop r23
+ 328 0150 6F91      		pop r22
+ 329 0152 5F91      		pop r21
+ 330 0154 4F91      		pop r20
+ 331 0156 3F91      		pop r19
+ 332 0158 2F91      		pop r18
+ 333 015a 0F90      		pop r0
+ 334 015c 0FBE      		out __SREG__,r0
+ 335 015e 0F90      		pop r0
+ 336 0160 1F90      		pop r1
+ 337 0162 1895      		reti
+ 338               		.cfi_endproc
+ 339               	.LFE9:
+ 341               	.global	sendchar
+ 343               	sendchar:
+ 344               	.LFB12:
+ 134:src/main.c    **** 
+ 135:src/main.c    **** void sendchar(uint8_t data)
+ 136:src/main.c    **** {
+ 345               		.loc 1 136 0
+ 346               		.cfi_startproc
+ 347               	/* prologue: function */
+ 348               	/* frame size = 0 */
+ 349               	/* stack size = 0 */
+ 350               	.L__stack_usage = 0
+ 351               	.LVL21:
+ 352               	.L21:
+ 137:src/main.c    **** 	while (!(UCSRA & (1 << UDRE)))
+ 353               		.loc 1 137 0 discriminator 1
+ 354 0164 5D9B      		sbis 0xb,5
+ 355 0166 00C0      		rjmp .L21
+ 138:src/main.c    **** 		;
+ 139:src/main.c    **** 	UDR = data;
+ 356               		.loc 1 139 0
+ 357 0168 8CB9      		out 0xc,r24
+ 358 016a 0895      		ret
+ 359               		.cfi_endproc
+ 360               	.LFE12:
+ 362               	.global	uart_puts
+ 364               	uart_puts:
+ 365               	.LFB13:
+ 140:src/main.c    **** }
+ 141:src/main.c    **** 
+ 142:src/main.c    **** void uart_puts(const char *s)
+ 143:src/main.c    **** {
+ 366               		.loc 1 143 0
+ 367               		.cfi_startproc
+ 368               	.LVL22:
+ 369 016c 0F93      		push r16
+ 370               	.LCFI23:
+ 371               		.cfi_def_cfa_offset 3
+ 372               		.cfi_offset 16, -2
+ 373 016e 1F93      		push r17
+ 374               	.LCFI24:
+ 375               		.cfi_def_cfa_offset 4
+ 376               		.cfi_offset 17, -3
+ 377 0170 CF93      		push r28
+ 378               	.LCFI25:
+ 379               		.cfi_def_cfa_offset 5
+ 380               		.cfi_offset 28, -4
+ 381 0172 DF93      		push r29
+ 382               	.LCFI26:
+ 383               		.cfi_def_cfa_offset 6
+ 384               		.cfi_offset 29, -5
+ 385               	/* prologue: function */
+ 386               	/* frame size = 0 */
+ 387               	/* stack size = 4 */
+ 388               	.L__stack_usage = 4
+ 389 0174 EC01      		movw r28,r24
+ 390               	.LVL23:
+ 391               	.L24:
+ 392 0176 8E01      		movw r16,r28
+ 144:src/main.c    **** 	do
+ 145:src/main.c    **** 	{
+ 146:src/main.c    **** 		sendchar(*s);
+ 393               		.loc 1 146 0 discriminator 1
+ 394 0178 8991      		ld r24,Y+
+ 395               	.LVL24:
+ 396 017a 00D0      		rcall sendchar
+ 397               	.LVL25:
+ 147:src/main.c    **** 	} while (*s++);
+ 398               		.loc 1 147 0 discriminator 1
+ 399 017c F801      		movw r30,r16
+ 400 017e 8081      		ld r24,Z
+ 401 0180 8111      		cpse r24,__zero_reg__
+ 402 0182 00C0      		rjmp .L24
+ 403               	/* epilogue start */
+ 148:src/main.c    **** }
+ 404               		.loc 1 148 0
+ 405 0184 DF91      		pop r29
+ 406 0186 CF91      		pop r28
+ 407               	.LVL26:
+ 408 0188 1F91      		pop r17
+ 409 018a 0F91      		pop r16
+ 410               	.LVL27:
+ 411 018c 0895      		ret
+ 412               		.cfi_endproc
+ 413               	.LFE13:
+ 415               		.section	.rodata.str1.1
+ 416               	.LC2:
+ 417 0015 0A74 5F6F 		.string	"\nt_out"
+ 417      7574 00
+ 418               		.text
+ 419               	.global	__vector_9
+ 421               	__vector_9:
+ 422               	.LFB8:
+  49:src/main.c    **** {
+ 423               		.loc 1 49 0
+ 424               		.cfi_startproc
+ 425 018e 1F92      		push r1
+ 426               	.LCFI27:
+ 427               		.cfi_def_cfa_offset 3
+ 428               		.cfi_offset 1, -2
+ 429 0190 0F92      		push r0
+ 430               	.LCFI28:
+ 431               		.cfi_def_cfa_offset 4
+ 432               		.cfi_offset 0, -3
+ 433 0192 0FB6      		in r0,__SREG__
+ 434 0194 0F92      		push r0
+ 435 0196 1124      		clr __zero_reg__
+ 436 0198 2F93      		push r18
+ 437               	.LCFI29:
+ 438               		.cfi_def_cfa_offset 5
+ 439               		.cfi_offset 18, -4
+ 440 019a 3F93      		push r19
+ 441               	.LCFI30:
+ 442               		.cfi_def_cfa_offset 6
+ 443               		.cfi_offset 19, -5
+ 444 019c 4F93      		push r20
+ 445               	.LCFI31:
+ 446               		.cfi_def_cfa_offset 7
+ 447               		.cfi_offset 20, -6
+ 448 019e 5F93      		push r21
+ 449               	.LCFI32:
+ 450               		.cfi_def_cfa_offset 8
+ 451               		.cfi_offset 21, -7
+ 452 01a0 6F93      		push r22
+ 453               	.LCFI33:
+ 454               		.cfi_def_cfa_offset 9
+ 455               		.cfi_offset 22, -8
+ 456 01a2 7F93      		push r23
+ 457               	.LCFI34:
+ 458               		.cfi_def_cfa_offset 10
+ 459               		.cfi_offset 23, -9
+ 460 01a4 8F93      		push r24
+ 461               	.LCFI35:
+ 462               		.cfi_def_cfa_offset 11
+ 463               		.cfi_offset 24, -10
+ 464 01a6 9F93      		push r25
+ 465               	.LCFI36:
+ 466               		.cfi_def_cfa_offset 12
+ 467               		.cfi_offset 25, -11
+ 468 01a8 AF93      		push r26
+ 469               	.LCFI37:
+ 470               		.cfi_def_cfa_offset 13
+ 471               		.cfi_offset 26, -12
+ 472 01aa BF93      		push r27
+ 473               	.LCFI38:
+ 474               		.cfi_def_cfa_offset 14
+ 475               		.cfi_offset 27, -13
+ 476 01ac EF93      		push r30
+ 477               	.LCFI39:
+ 478               		.cfi_def_cfa_offset 15
+ 479               		.cfi_offset 30, -14
+ 480 01ae FF93      		push r31
+ 481               	.LCFI40:
+ 482               		.cfi_def_cfa_offset 16
+ 483               		.cfi_offset 31, -15
+ 484               	/* prologue: Signal */
+ 485               	/* frame size = 0 */
+ 486               	/* stack size = 15 */
+ 487               	.L__stack_usage = 15
+  51:src/main.c    **** 	if(timer0Counter++ > 4)
+ 488               		.loc 1 51 0
+ 489 01b0 8091 0000 		lds r24,timer0Counter
+ 490 01b4 9091 0000 		lds r25,timer0Counter+1
+ 491 01b8 A091 0000 		lds r26,timer0Counter+2
+ 492 01bc B091 0000 		lds r27,timer0Counter+3
+ 493 01c0 AC01      		movw r20,r24
+ 494 01c2 BD01      		movw r22,r26
+ 495 01c4 4F5F      		subi r20,-1
+ 496 01c6 5F4F      		sbci r21,-1
+ 497 01c8 6F4F      		sbci r22,-1
+ 498 01ca 7F4F      		sbci r23,-1
+ 499 01cc 4093 0000 		sts timer0Counter,r20
+ 500 01d0 5093 0000 		sts timer0Counter+1,r21
+ 501 01d4 6093 0000 		sts timer0Counter+2,r22
+ 502 01d8 7093 0000 		sts timer0Counter+3,r23
+ 503 01dc 0597      		sbiw r24,5
+ 504 01de A105      		cpc r26,__zero_reg__
+ 505 01e0 B105      		cpc r27,__zero_reg__
+ 506 01e2 00F0      		brlo .L25
+  53:src/main.c    **** 		if(!isCommand)
+ 507               		.loc 1 53 0
+ 508 01e4 8091 0000 		lds r24,isCommand
+ 509 01e8 8111      		cpse r24,__zero_reg__
+ 510 01ea 00C0      		rjmp .L27
+  55:src/main.c    **** 			isCommand = 1;
+ 511               		.loc 1 55 0
+ 512 01ec 81E0      		ldi r24,lo8(1)
+ 513 01ee 8093 0000 		sts isCommand,r24
+  56:src/main.c    **** 			uart_puts("\nt_out");
+ 514               		.loc 1 56 0
+ 515 01f2 80E0      		ldi r24,lo8(.LC2)
+ 516 01f4 90E0      		ldi r25,hi8(.LC2)
+ 517 01f6 00D0      		rcall uart_puts
+ 518               	.LVL28:
+ 519               	.L27:
+  58:src/main.c    **** 		timer0Counter = 0;
+ 520               		.loc 1 58 0
+ 521 01f8 1092 0000 		sts timer0Counter,__zero_reg__
+ 522 01fc 1092 0000 		sts timer0Counter+1,__zero_reg__
+ 523 0200 1092 0000 		sts timer0Counter+2,__zero_reg__
+ 524 0204 1092 0000 		sts timer0Counter+3,__zero_reg__
+  59:src/main.c    **** 		lastCommand = NONE;
+ 525               		.loc 1 59 0
+ 526 0208 1092 0000 		sts lastCommand,__zero_reg__
+  60:src/main.c    **** 		parameterIndex = 0;
+ 527               		.loc 1 60 0
+ 528 020c 1092 0000 		sts parameterIndex,__zero_reg__
+ 529               	.L25:
+ 530               	/* epilogue start */
+  62:src/main.c    **** }
+ 531               		.loc 1 62 0
+ 532 0210 FF91      		pop r31
+ 533 0212 EF91      		pop r30
+ 534 0214 BF91      		pop r27
+ 535 0216 AF91      		pop r26
+ 536 0218 9F91      		pop r25
+ 537 021a 8F91      		pop r24
+ 538 021c 7F91      		pop r23
+ 539 021e 6F91      		pop r22
+ 540 0220 5F91      		pop r21
+ 541 0222 4F91      		pop r20
+ 542 0224 3F91      		pop r19
+ 543 0226 2F91      		pop r18
+ 544 0228 0F90      		pop r0
+ 545 022a 0FBE      		out __SREG__,r0
+ 546 022c 0F90      		pop r0
+ 547 022e 1F90      		pop r1
+ 548 0230 1895      		reti
+ 549               		.cfi_endproc
+ 550               	.LFE8:
+ 552               	.global	recvchar
+ 554               	recvchar:
+ 555               	.LFB14:
+ 149:src/main.c    **** 
+ 150:src/main.c    **** uint8_t recvchar(void)
+ 151:src/main.c    **** {
+ 556               		.loc 1 151 0
+ 557               		.cfi_startproc
+ 558               	/* prologue: function */
+ 559               	/* frame size = 0 */
+ 560               	/* stack size = 0 */
+ 561               	.L__stack_usage = 0
+ 562               	.L30:
+ 152:src/main.c    **** 	while (!(UCSRA & (1 << RXC)))
+ 563               		.loc 1 152 0 discriminator 1
+ 564 0232 5F9B      		sbis 0xb,7
+ 565 0234 00C0      		rjmp .L30
+ 153:src/main.c    **** 		;
+ 154:src/main.c    **** 	return UDR;
+ 566               		.loc 1 154 0
+ 567 0236 8CB1      		in r24,0xc
+ 155:src/main.c    **** }
+ 568               		.loc 1 155 0
+ 569 0238 0895      		ret
+ 570               		.cfi_endproc
+ 571               	.LFE14:
+ 573               		.section	.rodata.str1.1
+ 574               	.LC3:
+ 575 001c 0A42 6F6F 		.string	"\nBooting serial matrix display"
+ 575      7469 6E67 
+ 575      2073 6572 
+ 575      6961 6C20 
+ 575      6D61 7472 
+ 576               		.text
+ 577               	.global	init
+ 579               	init:
+ 580               	.LFB15:
+ 156:src/main.c    **** 
+ 157:src/main.c    **** void init()
+ 158:src/main.c    **** {
+ 581               		.loc 1 158 0
+ 582               		.cfi_startproc
+ 583               	/* prologue: function */
+ 584               	/* frame size = 0 */
+ 585               	/* stack size = 0 */
+ 586               	.L__stack_usage = 0
+ 159:src/main.c    **** 	/* GPIO Configuration */
+ 160:src/main.c    **** 	DDRD &= ~(1 << PD5 | 1 << PD6 | 1 << PD7);
+ 587               		.loc 1 160 0
+ 588 023a 81B3      		in r24,0x11
+ 589 023c 8F71      		andi r24,lo8(31)
+ 590 023e 81BB      		out 0x11,r24
+ 161:src/main.c    **** 	PORTD = (1 << PD5 | 1 << PD6 | 1 << PD7);
+ 591               		.loc 1 161 0
+ 592 0240 80EE      		ldi r24,lo8(-32)
+ 593 0242 82BB      		out 0x12,r24
+ 162:src/main.c    **** 	/* USART Configuration */
+ 163:src/main.c    **** 	UBRRH = (UART_CALC_BAUDRATE(BAUDRATE) >> 8) & 0xFF;
+ 594               		.loc 1 163 0
+ 595 0244 10BC      		out 0x20,__zero_reg__
+ 164:src/main.c    **** 	UBRRL = (UART_CALC_BAUDRATE(BAUDRATE) & 0xFF);
+ 596               		.loc 1 164 0
+ 597 0246 8CE0      		ldi r24,lo8(12)
+ 598 0248 89B9      		out 0x9,r24
+ 165:src/main.c    **** 	UCSRB = ((1 << TXEN) | (1 << RXEN));
+ 599               		.loc 1 165 0
+ 600 024a 88E1      		ldi r24,lo8(24)
+ 601 024c 8AB9      		out 0xa,r24
+ 166:src/main.c    **** 	UCSRC = ((1 << URSEL) | (1 << UCSZ1) | (1 << UCSZ0));
+ 602               		.loc 1 166 0
+ 603 024e 86E8      		ldi r24,lo8(-122)
+ 604 0250 80BD      		out 0x20,r24
+ 167:src/main.c    **** 	UCSRB |= (1 << RXEN) | (1 << TXEN);
+ 605               		.loc 1 167 0
+ 606 0252 8AB1      		in r24,0xa
+ 607 0254 8861      		ori r24,lo8(24)
+ 608 0256 8AB9      		out 0xa,r24
+ 168:src/main.c    **** 	UCSRB |= (1 << RXCIE);
+ 609               		.loc 1 168 0
+ 610 0258 579A      		sbi 0xa,7
+ 169:src/main.c    **** 	/* TIMER Configuration */
+ 170:src/main.c    **** 	TIMSK |= (1 << TOIE0);        // interrupt enable - here overflow
+ 611               		.loc 1 170 0
+ 612 025a 89B7      		in r24,0x39
+ 613 025c 8160      		ori r24,lo8(1)
+ 614 025e 89BF      		out 0x39,r24
+ 171:src/main.c    **** 	TCCR0 |= TIMER0_PRESCALER;    // use defined prescaler value
+ 615               		.loc 1 171 0
+ 616 0260 83B7      		in r24,0x33
+ 617 0262 8560      		ori r24,lo8(5)
+ 618 0264 83BF      		out 0x33,r24
+ 172:src/main.c    **** 	stdout = &uartStdout;
+ 619               		.loc 1 172 0
+ 620 0266 80E0      		ldi r24,lo8(uartStdout)
+ 621 0268 90E0      		ldi r25,hi8(uartStdout)
+ 622 026a 9093 0000 		sts __iob+2+1,r25
+ 623 026e 8093 0000 		sts __iob+2,r24
+ 173:src/main.c    **** 	printf("\nBooting serial matrix display\n");
+ 624               		.loc 1 173 0
+ 625 0272 80E0      		ldi r24,lo8(.LC3)
+ 626 0274 90E0      		ldi r25,hi8(.LC3)
+ 627 0276 00C0      		rjmp puts
+ 628               	.LVL29:
+ 629               		.cfi_endproc
+ 630               	.LFE15:
+ 632               	.global	check_reset
+ 634               	check_reset:
+ 635               	.LFB16:
+ 174:src/main.c    **** }
+ 175:src/main.c    **** 
+ 176:src/main.c    **** int check_reset()
+ 177:src/main.c    **** {
+ 636               		.loc 1 177 0
+ 637               		.cfi_startproc
+ 638               	/* prologue: function */
+ 639               	/* frame size = 0 */
+ 640               	/* stack size = 0 */
+ 641               	.L__stack_usage = 0
+ 178:src/main.c    **** 	int result;
+ 179:src/main.c    **** 	result = PIND & (1 << PD5);
+ 642               		.loc 1 179 0
+ 643 0278 80B3      		in r24,0x10
+ 644               	.LVL30:
+ 180:src/main.c    **** 	result = !result;
+ 645               		.loc 1 180 0
+ 646 027a 8295      		swap r24
+ 647               	.LVL31:
+ 648 027c 8695      		lsr r24
+ 649 027e 8770      		andi r24,lo8(7)
+ 650 0280 91E0      		ldi r25,lo8(1)
+ 651 0282 8927      		eor r24,r25
+ 181:src/main.c    **** 	return result;
+ 182:src/main.c    **** }
+ 652               		.loc 1 182 0
+ 653 0284 8170      		andi r24,1
+ 654 0286 90E0      		ldi r25,0
+ 655 0288 0895      		ret
+ 656               		.cfi_endproc
+ 657               	.LFE16:
+ 659               		.section	.rodata.str1.1
+ 660               	.LC4:
+ 661 003b 0A52 5354 		.string	"\nRST PB ON BOARD"
+ 661      2050 4220 
+ 661      4F4E 2042 
+ 661      4F41 5244 
+ 661      00
+ 662               		.section	.text.startup,"ax",@progbits
+ 663               	.global	main
+ 665               	main:
+ 666               	.LFB17:
+ 183:src/main.c    **** 
+ 184:src/main.c    **** int main(void)
+ 185:src/main.c    **** {
+ 667               		.loc 1 185 0
+ 668               		.cfi_startproc
+ 669 0000 CF93      		push r28
+ 670               	.LCFI41:
+ 671               		.cfi_def_cfa_offset 3
+ 672               		.cfi_offset 28, -2
+ 673 0002 DF93      		push r29
+ 674               	.LCFI42:
+ 675               		.cfi_def_cfa_offset 4
+ 676               		.cfi_offset 29, -3
+ 677 0004 CDB7      		in r28,__SP_L__
+ 678 0006 DEB7      		in r29,__SP_H__
+ 679               	.LCFI43:
+ 680               		.cfi_def_cfa_register 28
+ 681 0008 A097      		sbiw r28,32
+ 682               	.LCFI44:
+ 683               		.cfi_def_cfa_offset 36
+ 684 000a 0FB6      		in __tmp_reg__,__SREG__
+ 685 000c F894      		cli
+ 686 000e DEBF      		out __SP_H__,r29
+ 687 0010 0FBE      		out __SREG__,__tmp_reg__
+ 688 0012 CDBF      		out __SP_L__,r28
+ 689               	/* prologue: function */
+ 690               	/* frame size = 32 */
+ 691               	/* stack size = 34 */
+ 692               	.L__stack_usage = 34
+ 186:src/main.c    **** 	uint8_t buffer[32];
+ 187:src/main.c    **** 	memset(buffer, 0xAA, 32);
+ 693               		.loc 1 187 0
+ 694 0014 40E2      		ldi r20,lo8(32)
+ 695 0016 50E0      		ldi r21,0
+ 696 0018 6AEA      		ldi r22,lo8(-86)
+ 697 001a 70E0      		ldi r23,0
+ 698 001c 8E01      		movw r16,r28
+ 699 001e 0F5F      		subi r16,-1
+ 700 0020 1F4F      		sbci r17,-1
+ 701 0022 C801      		movw r24,r16
+ 702 0024 00D0      		rcall memset
+ 703               	.LVL32:
+ 188:src/main.c    **** 	init();
+ 704               		.loc 1 188 0
+ 705 0026 00D0      		rcall init
+ 706               	.LVL33:
+ 189:src/main.c    **** 	ht1632c_init();
+ 707               		.loc 1 189 0
+ 708 0028 00D0      		rcall ht1632c_init
+ 709               	.LVL34:
+ 190:src/main.c    **** 	ht1632c_flush_fb(buffer);
+ 710               		.loc 1 190 0
+ 711 002a C801      		movw r24,r16
+ 712 002c 00D0      		rcall ht1632c_flush_fb
+ 713               	.LVL35:
+ 191:src/main.c    **** 	memset(buffer, 0x00, 32);
+ 714               		.loc 1 191 0
+ 715 002e 80E2      		ldi r24,lo8(32)
+ 716 0030 F801      		movw r30,r16
+ 717               		0:
+ 718 0032 1192      		st Z+,__zero_reg__
+ 719 0034 8A95      		dec r24
+ 720 0036 01F4      		brne 0b
+ 721               	.LVL36:
+ 722               	.LBB4:
+ 723               	.LBB5:
+ 724               		.file 2 "/usr/lib/avr/include/util/delay.h"
+   1:/usr/lib/avr/include/util/delay.h **** /* Copyright (c) 2002, Marek Michalkiewicz
+   2:/usr/lib/avr/include/util/delay.h ****    Copyright (c) 2004,2005,2007 Joerg Wunsch
+   3:/usr/lib/avr/include/util/delay.h ****    Copyright (c) 2007  Florin-Viorel Petrov
+   4:/usr/lib/avr/include/util/delay.h ****    All rights reserved.
+   5:/usr/lib/avr/include/util/delay.h **** 
+   6:/usr/lib/avr/include/util/delay.h ****    Redistribution and use in source and binary forms, with or without
+   7:/usr/lib/avr/include/util/delay.h ****    modification, are permitted provided that the following conditions are met:
+   8:/usr/lib/avr/include/util/delay.h **** 
+   9:/usr/lib/avr/include/util/delay.h ****    * Redistributions of source code must retain the above copyright
+  10:/usr/lib/avr/include/util/delay.h ****      notice, this list of conditions and the following disclaimer.
+  11:/usr/lib/avr/include/util/delay.h **** 
+  12:/usr/lib/avr/include/util/delay.h ****    * Redistributions in binary form must reproduce the above copyright
+  13:/usr/lib/avr/include/util/delay.h ****      notice, this list of conditions and the following disclaimer in
+  14:/usr/lib/avr/include/util/delay.h ****      the documentation and/or other materials provided with the
+  15:/usr/lib/avr/include/util/delay.h ****      distribution.
+  16:/usr/lib/avr/include/util/delay.h **** 
+  17:/usr/lib/avr/include/util/delay.h ****    * Neither the name of the copyright holders nor the names of
+  18:/usr/lib/avr/include/util/delay.h ****      contributors may be used to endorse or promote products derived
+  19:/usr/lib/avr/include/util/delay.h ****      from this software without specific prior written permission.
+  20:/usr/lib/avr/include/util/delay.h **** 
+  21:/usr/lib/avr/include/util/delay.h ****   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+  22:/usr/lib/avr/include/util/delay.h ****   AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+  23:/usr/lib/avr/include/util/delay.h ****   IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+  24:/usr/lib/avr/include/util/delay.h ****   ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+  25:/usr/lib/avr/include/util/delay.h ****   LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+  26:/usr/lib/avr/include/util/delay.h ****   CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+  27:/usr/lib/avr/include/util/delay.h ****   SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+  28:/usr/lib/avr/include/util/delay.h ****   INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+  29:/usr/lib/avr/include/util/delay.h ****   CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+  30:/usr/lib/avr/include/util/delay.h ****   ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+  31:/usr/lib/avr/include/util/delay.h ****   POSSIBILITY OF SUCH DAMAGE. */
+  32:/usr/lib/avr/include/util/delay.h **** 
+  33:/usr/lib/avr/include/util/delay.h **** /* $Id: delay.h.in 2251 2011-09-14 08:20:33Z joerg_wunsch $ */
+  34:/usr/lib/avr/include/util/delay.h **** 
+  35:/usr/lib/avr/include/util/delay.h **** #ifndef _UTIL_DELAY_H_
+  36:/usr/lib/avr/include/util/delay.h **** #define _UTIL_DELAY_H_ 1
+  37:/usr/lib/avr/include/util/delay.h **** 
+  38:/usr/lib/avr/include/util/delay.h **** #ifndef __HAS_DELAY_CYCLES
+  39:/usr/lib/avr/include/util/delay.h **** #define __HAS_DELAY_CYCLES 1
+  40:/usr/lib/avr/include/util/delay.h **** #endif
+  41:/usr/lib/avr/include/util/delay.h **** 
+  42:/usr/lib/avr/include/util/delay.h **** #include <inttypes.h>
+  43:/usr/lib/avr/include/util/delay.h **** #include <util/delay_basic.h>
+  44:/usr/lib/avr/include/util/delay.h **** #include <math.h>
+  45:/usr/lib/avr/include/util/delay.h **** 
+  46:/usr/lib/avr/include/util/delay.h **** /** \file */
+  47:/usr/lib/avr/include/util/delay.h **** /** \defgroup util_delay <util/delay.h>: Convenience functions for busy-wait delay loops
+  48:/usr/lib/avr/include/util/delay.h ****     \code
+  49:/usr/lib/avr/include/util/delay.h ****     #define F_CPU 1000000UL  // 1 MHz
+  50:/usr/lib/avr/include/util/delay.h ****     //#define F_CPU 14.7456E6
+  51:/usr/lib/avr/include/util/delay.h ****     #include <util/delay.h>
+  52:/usr/lib/avr/include/util/delay.h ****     \endcode
+  53:/usr/lib/avr/include/util/delay.h **** 
+  54:/usr/lib/avr/include/util/delay.h ****     \note As an alternative method, it is possible to pass the
+  55:/usr/lib/avr/include/util/delay.h ****     F_CPU macro down to the compiler from the Makefile.
+  56:/usr/lib/avr/include/util/delay.h ****     Obviously, in that case, no \c \#define statement should be
+  57:/usr/lib/avr/include/util/delay.h ****     used.
+  58:/usr/lib/avr/include/util/delay.h **** 
+  59:/usr/lib/avr/include/util/delay.h ****     The functions in this header file are wrappers around the basic
+  60:/usr/lib/avr/include/util/delay.h ****     busy-wait functions from <util/delay_basic.h>.  They are meant as
+  61:/usr/lib/avr/include/util/delay.h ****     convenience functions where actual time values can be specified
+  62:/usr/lib/avr/include/util/delay.h ****     rather than a number of cycles to wait for.  The idea behind is
+  63:/usr/lib/avr/include/util/delay.h ****     that compile-time constant expressions will be eliminated by
+  64:/usr/lib/avr/include/util/delay.h ****     compiler optimization so floating-point expressions can be used
+  65:/usr/lib/avr/include/util/delay.h ****     to calculate the number of delay cycles needed based on the CPU
+  66:/usr/lib/avr/include/util/delay.h ****     frequency passed by the macro F_CPU.
+  67:/usr/lib/avr/include/util/delay.h **** 
+  68:/usr/lib/avr/include/util/delay.h ****     \note In order for these functions to work as intended, compiler
+  69:/usr/lib/avr/include/util/delay.h ****     optimizations <em>must</em> be enabled, and the delay time
+  70:/usr/lib/avr/include/util/delay.h ****     <em>must</em> be an expression that is a known constant at
+  71:/usr/lib/avr/include/util/delay.h ****     compile-time.  If these requirements are not met, the resulting
+  72:/usr/lib/avr/include/util/delay.h ****     delay will be much longer (and basically unpredictable), and
+  73:/usr/lib/avr/include/util/delay.h ****     applications that otherwise do not use floating-point calculations
+  74:/usr/lib/avr/include/util/delay.h ****     will experience severe code bloat by the floating-point library
+  75:/usr/lib/avr/include/util/delay.h ****     routines linked into the application.
+  76:/usr/lib/avr/include/util/delay.h **** 
+  77:/usr/lib/avr/include/util/delay.h ****     The functions available allow the specification of microsecond, and
+  78:/usr/lib/avr/include/util/delay.h ****     millisecond delays directly, using the application-supplied macro
+  79:/usr/lib/avr/include/util/delay.h ****     F_CPU as the CPU clock frequency (in Hertz).
+  80:/usr/lib/avr/include/util/delay.h **** 
+  81:/usr/lib/avr/include/util/delay.h **** */
+  82:/usr/lib/avr/include/util/delay.h **** 
+  83:/usr/lib/avr/include/util/delay.h **** #if !defined(__DOXYGEN__)
+  84:/usr/lib/avr/include/util/delay.h **** static inline void _delay_us(double __us) __attribute__((always_inline));
+  85:/usr/lib/avr/include/util/delay.h **** static inline void _delay_ms(double __ms) __attribute__((always_inline));
+  86:/usr/lib/avr/include/util/delay.h **** #endif
+  87:/usr/lib/avr/include/util/delay.h **** 
+  88:/usr/lib/avr/include/util/delay.h **** #ifndef F_CPU
+  89:/usr/lib/avr/include/util/delay.h **** /* prevent compiler error by supplying a default */
+  90:/usr/lib/avr/include/util/delay.h **** # warning "F_CPU not defined for <util/delay.h>"
+  91:/usr/lib/avr/include/util/delay.h **** # define F_CPU 1000000UL
+  92:/usr/lib/avr/include/util/delay.h **** #endif
+  93:/usr/lib/avr/include/util/delay.h **** 
+  94:/usr/lib/avr/include/util/delay.h **** #ifndef __OPTIMIZE__
+  95:/usr/lib/avr/include/util/delay.h **** # warning "Compiler optimizations disabled; functions from <util/delay.h> won't work as designed"
+  96:/usr/lib/avr/include/util/delay.h **** #endif
+  97:/usr/lib/avr/include/util/delay.h **** 
+  98:/usr/lib/avr/include/util/delay.h **** #if __HAS_DELAY_CYCLES && defined(__OPTIMIZE__) && \
+  99:/usr/lib/avr/include/util/delay.h ****   !defined(__DELAY_BACKWARD_COMPATIBLE__) &&	   \
+ 100:/usr/lib/avr/include/util/delay.h ****   __STDC_HOSTED__
+ 101:/usr/lib/avr/include/util/delay.h **** #  include <math.h>
+ 102:/usr/lib/avr/include/util/delay.h **** #endif
+ 103:/usr/lib/avr/include/util/delay.h **** 
+ 104:/usr/lib/avr/include/util/delay.h **** /**
+ 105:/usr/lib/avr/include/util/delay.h ****    \ingroup util_delay
+ 106:/usr/lib/avr/include/util/delay.h **** 
+ 107:/usr/lib/avr/include/util/delay.h ****    Perform a delay of \c __ms milliseconds, using _delay_loop_2().
+ 108:/usr/lib/avr/include/util/delay.h **** 
+ 109:/usr/lib/avr/include/util/delay.h ****    The macro F_CPU is supposed to be defined to a
+ 110:/usr/lib/avr/include/util/delay.h ****    constant defining the CPU clock frequency (in Hertz).
+ 111:/usr/lib/avr/include/util/delay.h **** 
+ 112:/usr/lib/avr/include/util/delay.h ****    The maximal possible delay is 262.14 ms / F_CPU in MHz.
+ 113:/usr/lib/avr/include/util/delay.h **** 
+ 114:/usr/lib/avr/include/util/delay.h ****    When the user request delay which exceed the maximum possible one,
+ 115:/usr/lib/avr/include/util/delay.h ****    _delay_ms() provides a decreased resolution functionality. In this
+ 116:/usr/lib/avr/include/util/delay.h ****    mode _delay_ms() will work with a resolution of 1/10 ms, providing
+ 117:/usr/lib/avr/include/util/delay.h ****    delays up to 6.5535 seconds (independent from CPU frequency).  The
+ 118:/usr/lib/avr/include/util/delay.h ****    user will not be informed about decreased resolution.
+ 119:/usr/lib/avr/include/util/delay.h **** 
+ 120:/usr/lib/avr/include/util/delay.h ****    If the avr-gcc toolchain has __builtin_avr_delay_cycles(unsigned long)
+ 121:/usr/lib/avr/include/util/delay.h ****    support, maximal possible delay is 4294967.295 ms/ F_CPU in MHz. For
+ 122:/usr/lib/avr/include/util/delay.h ****    values greater than the maximal possible delay, overflows results in
+ 123:/usr/lib/avr/include/util/delay.h ****    no delay i.e., 0ms.
+ 124:/usr/lib/avr/include/util/delay.h **** 
+ 125:/usr/lib/avr/include/util/delay.h ****    Conversion of __us into clock cycles may not always result in integer.
+ 126:/usr/lib/avr/include/util/delay.h ****    By default, the clock cycles rounded up to next integer. This ensures that
+ 127:/usr/lib/avr/include/util/delay.h ****    the user gets atleast __us microseconds of delay.
+ 128:/usr/lib/avr/include/util/delay.h **** 
+ 129:/usr/lib/avr/include/util/delay.h ****    Alternatively, user can define __DELAY_ROUND_DOWN__ and __DELAY_ROUND_CLOSEST__
+ 130:/usr/lib/avr/include/util/delay.h ****    to round down and round to closest integer.
+ 131:/usr/lib/avr/include/util/delay.h **** 
+ 132:/usr/lib/avr/include/util/delay.h ****    Note: The new implementation of _delay_ms(double __ms) with 
+ 133:/usr/lib/avr/include/util/delay.h ****     __builtin_avr_delay_cycles(unsigned long) support is not backward compatible. 
+ 134:/usr/lib/avr/include/util/delay.h ****    User can define __DELAY_BACKWARD_COMPATIBLE__ to get a backward compatible delay.
+ 135:/usr/lib/avr/include/util/delay.h ****    Also, the backward compatible
+ 136:/usr/lib/avr/include/util/delay.h ****    algorithm will be chosen if the code is compiled in a <em>freestanding
+ 137:/usr/lib/avr/include/util/delay.h ****    environment</em> (GCC option \c -ffreestanding), as the math functions
+ 138:/usr/lib/avr/include/util/delay.h ****    required for rounding are not available to the compiler then.
+ 139:/usr/lib/avr/include/util/delay.h **** 
+ 140:/usr/lib/avr/include/util/delay.h ****  */
+ 141:/usr/lib/avr/include/util/delay.h **** void
+ 142:/usr/lib/avr/include/util/delay.h **** _delay_ms(double __ms)
+ 143:/usr/lib/avr/include/util/delay.h **** {
+ 144:/usr/lib/avr/include/util/delay.h **** 	uint16_t __ticks;
+ 145:/usr/lib/avr/include/util/delay.h **** 	double __tmp ; 
+ 146:/usr/lib/avr/include/util/delay.h **** #if __HAS_DELAY_CYCLES && defined(__OPTIMIZE__) && \
+ 147:/usr/lib/avr/include/util/delay.h ****   !defined(__DELAY_BACKWARD_COMPATIBLE__) &&	   \
+ 148:/usr/lib/avr/include/util/delay.h ****   __STDC_HOSTED__
+ 149:/usr/lib/avr/include/util/delay.h **** 	uint32_t __ticks_dc;
+ 150:/usr/lib/avr/include/util/delay.h **** 	extern void __builtin_avr_delay_cycles(unsigned long);
+ 151:/usr/lib/avr/include/util/delay.h **** 	__tmp = ((F_CPU) / 1e3) * __ms;
+ 152:/usr/lib/avr/include/util/delay.h **** 
+ 153:/usr/lib/avr/include/util/delay.h **** 	#if defined(__DELAY_ROUND_DOWN__)
+ 154:/usr/lib/avr/include/util/delay.h **** 		__ticks_dc = (uint32_t)fabs(__tmp);
+ 155:/usr/lib/avr/include/util/delay.h **** 
+ 156:/usr/lib/avr/include/util/delay.h **** 	#elif defined(__DELAY_ROUND_CLOSEST__)
+ 157:/usr/lib/avr/include/util/delay.h **** 		__ticks_dc = (uint32_t)(fabs(__tmp)+0.5);
+ 158:/usr/lib/avr/include/util/delay.h **** 
+ 159:/usr/lib/avr/include/util/delay.h **** 	#else
+ 160:/usr/lib/avr/include/util/delay.h **** 		//round up by default
+ 161:/usr/lib/avr/include/util/delay.h **** 		__ticks_dc = (uint32_t)(ceil(fabs(__tmp)));
+ 162:/usr/lib/avr/include/util/delay.h **** 	#endif
+ 163:/usr/lib/avr/include/util/delay.h **** 
+ 164:/usr/lib/avr/include/util/delay.h **** 	__builtin_avr_delay_cycles(__ticks_dc);
+ 725               		.loc 2 164 0
+ 726 0038 FFE7      		ldi r31,lo8(1199999)
+ 727 003a 2FE4      		ldi r18,hi8(1199999)
+ 728 003c 82E1      		ldi r24,hlo8(1199999)
+ 729 003e F150      		1: subi r31,1
+ 730 0040 2040      		sbci r18,0
+ 731 0042 8040      		sbci r24,0
+ 732 0044 01F4      		brne 1b
+ 733 0046 00C0      		rjmp .
+ 734 0048 0000      		nop
+ 735               	.LBE5:
+ 736               	.LBE4:
+ 192:src/main.c    **** 	_delay_ms(500);
+ 193:src/main.c    **** 	ht1632c_flush_fb(buffer);
+ 737               		.loc 1 193 0
+ 738 004a CE01      		movw r24,r28
+ 739 004c 0196      		adiw r24,1
+ 740 004e 00D0      		rcall ht1632c_flush_fb
+ 741               	.LVL37:
+ 194:src/main.c    **** 	sei();
+ 742               		.loc 1 194 0
+ 743               	/* #APP */
+ 744               	 ;  194 "src/main.c" 1
+ 745 0050 7894      		sei
+ 746               	 ;  0 "" 2
+ 747               	/* #NOAPP */
+ 748               	.L35:
+ 195:src/main.c    **** 	for (;;)
+ 196:src/main.c    **** 	{
+ 197:src/main.c    **** 		if (check_reset())
+ 749               		.loc 1 197 0
+ 750 0052 00D0      		rcall check_reset
+ 751               	.LVL38:
+ 752 0054 892B      		or r24,r25
+ 753 0056 01F0      		breq .L35
+ 198:src/main.c    **** 		{
+ 199:src/main.c    **** 			printf("\nRST PB ON BOARD\n");
+ 754               		.loc 1 199 0
+ 755 0058 80E0      		ldi r24,lo8(.LC4)
+ 756 005a 90E0      		ldi r25,hi8(.LC4)
+ 757 005c 00D0      		rcall puts
+ 758               	.LVL39:
+ 200:src/main.c    **** 			wdt_enable (WDTO_15MS);
+ 759               		.loc 1 200 0
+ 760 005e 28E0      		ldi r18,lo8(8)
+ 761 0060 88E1      		ldi r24,lo8(24)
+ 762 0062 90E0      		ldi r25,0
+ 763               	/* #APP */
+ 764               	 ;  200 "src/main.c" 1
+ 765 0064 0FB6      		in __tmp_reg__,__SREG__
+ 766 0066 F894      		cli
+ 767 0068 A895      		wdr
+ 768 006a 81BD      		out 33,r24
+ 769 006c 0FBE      		out __SREG__,__tmp_reg__
+ 770 006e 21BD      		out 33,r18
+ 771               	 ;  0 "" 2
+ 772               	/* #NOAPP */
+ 773               	.L36:
+ 774 0070 00C0      		rjmp .L36
+ 775               		.cfi_endproc
+ 776               	.LFE17:
+ 778               		.comm	lastCommand,1,1
+ 779               		.comm	parameterIndex,1,1
+ 780               		.comm	rxParameters,32,1
+ 781               	.global	isCommand
+ 782               		.data
+ 785               	isCommand:
+ 786 0000 01        		.byte	1
+ 787               	.global	timer0Counter
+ 788               		.section .bss
+ 791               	timer0Counter:
+ 792 0000 0000 0000 		.zero	4
+ 793               		.data
+ 796               	uartStdout:
+ 797 0001 0000 00   		.zero	3
+ 798 0004 02        		.byte	2
+ 799 0005 0000 0000 		.zero	4
+ 800 0009 0000      		.word	gs(uart_putchar)
+ 801 000b 0000      		.word	0
+ 802 000d 0000      		.word	0
+ 803               		.text
+ 804               	.Letext0:
+ 805               		.file 3 "/usr/lib/avr/include/stdint.h"
+ 806               		.file 4 "/usr/lib/avr/include/stdio.h"
+ 807               		.file 5 "include/ht1632c.h"
+ 808               		.file 6 "<built-in>"
+DEFINED SYMBOLS
+                            *ABS*:0000000000000000 main.c
+     /tmp/cc6fpgjU.s:2      *ABS*:000000000000003e __SP_H__
+     /tmp/cc6fpgjU.s:3      *ABS*:000000000000003d __SP_L__
+     /tmp/cc6fpgjU.s:4      *ABS*:000000000000003f __SREG__
+     /tmp/cc6fpgjU.s:5      *ABS*:0000000000000000 __tmp_reg__
+     /tmp/cc6fpgjU.s:6      *ABS*:0000000000000001 __zero_reg__
+     /tmp/cc6fpgjU.s:11     .text:0000000000000000 uart_putchar
+     /tmp/cc6fpgjU.s:56     .text:000000000000001a processCommand
+                            *COM*:0000000000000001 parameterIndex
+                            *COM*:0000000000000020 rxParameters
+     /tmp/cc6fpgjU.s:785    .data:0000000000000000 isCommand
+     /tmp/cc6fpgjU.s:167    .text:0000000000000090 __vector_11
+     /tmp/cc6fpgjU.s:791    .bss:0000000000000000 timer0Counter
+                            *COM*:0000000000000001 lastCommand
+     /tmp/cc6fpgjU.s:343    .text:0000000000000164 sendchar
+     /tmp/cc6fpgjU.s:364    .text:000000000000016c uart_puts
+     /tmp/cc6fpgjU.s:421    .text:000000000000018e __vector_9
+     /tmp/cc6fpgjU.s:554    .text:0000000000000232 recvchar
+     /tmp/cc6fpgjU.s:579    .text:000000000000023a init
+     /tmp/cc6fpgjU.s:796    .data:0000000000000001 uartStdout
+     /tmp/cc6fpgjU.s:634    .text:0000000000000278 check_reset
+     /tmp/cc6fpgjU.s:665    .text.startup:0000000000000000 main
+
+UNDEFINED SYMBOLS
+ht1632c_data8
+ht1632c_bright
+ht1632c_blinkonoff
+ht1632c_flush_fb
+printf
+sprintf
+__iob
+puts
+memset
+ht1632c_init
+__do_copy_data
+__do_clear_bss

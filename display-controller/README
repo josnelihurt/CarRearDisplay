@@ -1,0 +1,2 @@
+This folder contains the source code for the avr mcu on the led matrix board that controls ht1632c driver. 
+There is also a bootloader to use in the avr so remember to flash it before. By the usage of the bootloader I will upload the firmware if need it using wifi from the esp8266 :P (Tested)
